@@ -23,7 +23,6 @@ fn main() {
     println!("program runtime: {}", now.elapsed().as_micros());
 }
 fn problem_dampener(to_dampen: &Vec<usize>, index: usize) -> bool {
-    println!("before problem dampening {:?} index: {}", to_dampen, index);
     let mut check = to_dampen.clone();
     check.remove(index);
     if babbage(&check).0 {
