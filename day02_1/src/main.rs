@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, iter::Enumerate, time::Instant};
+use std::{fs::read_to_string, time::Instant};
 
 fn main() {
     let now = Instant::now();
@@ -12,7 +12,6 @@ fn main() {
             acc += 1;
             continue;
         }
-
         if problem_dampener(&parsed, analysis.1) {
             acc += 1;
             continue;
@@ -23,18 +22,16 @@ fn main() {
 }
 fn problem_dampener(to_dampen: &Vec<usize>, index: usize) -> bool {
     let mut check = to_dampen.clone();
-    check.remove(index);
-    if babbage(&check).0 {
-        return true;
-    }
-    check = to_dampen.clone();
-    check.remove(index + 1);
-    if babbage(&check).0 {
-        return true;
-    }
+    let mut to_remove: Vec<usize> = Vec::with_capacity(3);
     if index > 0 {
-        check = to_dampen.clone();
-        check.remove(index - 1);
+        to_remove.push(index - 1);
+    }
+    to_remove.push(index);
+    to_remove.push(index + 1);
+
+    for index in to_remove {
+        let mut check = to_dampen.clone();
+        check.remove(index);
         if babbage(&check).0 {
             return true;
         }
