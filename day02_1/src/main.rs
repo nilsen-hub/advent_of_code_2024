@@ -8,11 +8,7 @@ fn main() {
     for line in full_data {
         let parsed = parse_line(line);
         let analysis = babbage(&parsed);
-        if analysis.0 {
-            acc += 1;
-            continue;
-        }
-        if problem_dampener(&parsed, analysis.1) {
+        if analysis.0 || problem_dampener(&parsed, analysis.1) {
             acc += 1;
             continue;
         }
@@ -21,13 +17,10 @@ fn main() {
     println!("program runtime: {}", now.elapsed().as_micros());
 }
 fn problem_dampener(to_dampen: &Vec<usize>, index: usize) -> bool {
-    let mut to_remove: Vec<usize> = Vec::with_capacity(3);
+    let mut to_remove: [usize; 3] = [index, index + 1, 0];
     if index > 0 {
-        to_remove.push(index - 1);
+        to_remove[2] = index - 1;
     }
-    to_remove.push(index);
-    to_remove.push(index + 1);
-
     for index in to_remove {
         let mut check = to_dampen.clone();
         check.remove(index);
