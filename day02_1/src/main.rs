@@ -21,7 +21,6 @@ fn main() {
     println!("program runtime: {}", now.elapsed().as_micros());
 }
 fn problem_dampener(to_dampen: &Vec<usize>, index: usize) -> bool {
-    let mut check = to_dampen.clone();
     let mut to_remove: Vec<usize> = Vec::with_capacity(3);
     if index > 0 {
         to_remove.push(index - 1);
