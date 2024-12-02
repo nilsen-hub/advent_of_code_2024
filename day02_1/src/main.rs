@@ -15,7 +15,6 @@ fn main() {
 
         if problem_dampener(&parsed, analysis.1) {
             acc += 1;
-            println!("success!");
             continue;
         }
     }
