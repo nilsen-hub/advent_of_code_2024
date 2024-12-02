@@ -17,8 +17,8 @@ fn babbage(full_data: Vec<String>) -> usize {
         left_list.push(problem[0]);
         right_list.push(problem[1]);
     }
-    left_list.sort();
-    right_list.sort();
+    left_list.sort_unstable();
+    right_list.sort_unstable();
     for (index, el) in left_list.iter().enumerate() {
         acc += el.abs_diff(right_list[index]);
     }

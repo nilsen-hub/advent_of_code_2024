@@ -28,7 +28,6 @@ fn babbage(full_data: Vec<String>) -> usize {
     acc
 }
 fn parse_line(line: &String) -> [usize; 2] {
-    //let line = line.clone();
     let mut output: [usize; 2] = [0, 0];
     let numbers: Vec<&str> = line.split_whitespace().collect();
     for (index, el) in numbers.iter().enumerate() {
