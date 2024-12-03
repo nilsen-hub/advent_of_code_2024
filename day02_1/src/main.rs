@@ -2,7 +2,7 @@ use std::{fs::read_to_string, time::Instant};
 
 fn main() {
     let now = Instant::now();
-    let path = "./data/data";
+    let path = "./data/ravi";
     let full_data = get_list_from_file(path);
     let mut acc: usize = 0;
     for line in full_data {
