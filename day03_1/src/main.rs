@@ -1,4 +1,4 @@
-use std::{default, fs::read_to_string, ops::Index, time::Instant};
+use std::{fs::read_to_string, time::Instant};
 
 fn main() {
     let now = Instant::now();
@@ -11,15 +11,14 @@ fn main() {
 fn babbage(full_data: Vec<String>) -> usize {
     let mut acc: usize = 0;
     for line in full_data {
-        let mut mul_strings: Vec<&str> = Vec::with_capacity(256);
         let mut workbench = line.clone();
         'outer: loop {
             let mul = match workbench.find("mul(") {
                 Some(val) => val,
                 None => break,
             };
-            let mut counter: usize = 15;
-            let mut string: String = loop {
+            let mut counter: usize = 12;
+            let string: String = loop {
                 match workbench.get((mul + 4)..mul + counter) {
                     Some(val) => break val.to_owned(),
                     None => {
@@ -52,7 +51,7 @@ fn babbage(full_data: Vec<String>) -> usize {
             }
             let left: usize = left_c.parse().unwrap();
             let right: usize = right_c.parse().unwrap();
-            acc += (left * right);
+            acc += left * right;
         }
     }
     acc
