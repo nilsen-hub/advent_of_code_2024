@@ -21,8 +21,6 @@ fn babbage(full_data:Vec<String>) -> usize{
                     break;
                 }
             }
-
-            
         }
     }
     acc
@@ -67,14 +65,12 @@ fn valid_order(page_map:&HashMap<usize, Vec<usize>>, order: &Vec<usize>) -> bool
             }
             count += 1;
         }
-    
     }
     true
 }
 fn parser(full_data: Vec<String>) ->(HashMap<usize, Vec<usize>>, Vec<Vec<usize>>) {
     let mut page_map: HashMap<usize, Vec<usize>> = HashMap::with_capacity(2048);
     let mut update_orders: Vec<Vec<usize>> = Vec::with_capacity(256);
-
     for line in full_data{
         if line.contains("|"){
             let page: Vec<&str> = line.split('|').collect();
@@ -97,7 +93,6 @@ fn parser(full_data: Vec<String>) ->(HashMap<usize, Vec<usize>>, Vec<Vec<usize>>
             update_orders.push(orders);
         }
     }
-
     (page_map, update_orders)
 }
 fn get_list_from_file(path: &str) -> Vec<String> {
@@ -106,12 +101,4 @@ fn get_list_from_file(path: &str) -> Vec<String> {
         .lines()
         .map(String::from)
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn passes_example() {}
 }
