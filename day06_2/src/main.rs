@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, path, time::Instant};
+use std::{fs::read_to_string, time::Instant};
 #[derive(Debug, Clone)]
 struct Agent{
     x:usize,
