@@ -40,16 +40,6 @@ fn babbage(full_data: Vec<String>) -> usize{
             }
         field_copy[spot.1][spot.0] = shelf;
     }
-    //for (index, line) in field.iter().enumerate(){
-    //    for (idx, c) in line.iter().enumerate(){
-    //        let shelf = field_copy[index][idx];
-    //        field_copy[index][idx] = '#';
-    //        if infinite_loop_checker(&field_copy, &agent){
-    //            acc += 1;
-    //        }
-    //        field_copy[index][idx] = shelf;
-    //    }
-    //}
     acc
 }
 fn walk_n_count(field:&Vec<Vec<char>>, agent:&Agent) -> Vec<Vec<char>> {
@@ -77,9 +67,9 @@ fn walk_n_count(field:&Vec<Vec<char>>, agent:&Agent) -> Vec<Vec<char>> {
         if field[next_step.1][next_step.0] == '#'{
             if agent.dir == 3{
                 agent.dir = 0;
-            } else {
-                agent.dir += 1;
-            }
+                continue;
+            } 
+            agent.dir += 1;
             continue;
         }
         agent.x = next_step.0;
