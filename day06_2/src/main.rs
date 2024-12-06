@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, time::Instant};
+use std::{fs::read_to_string, path, time::Instant};
 #[derive(Debug, Clone)]
 struct Agent{
     x:usize,
@@ -22,18 +22,69 @@ fn babbage(full_data: Vec<String>) -> usize{
         x,
         y,
         dir: 0,
-    };
-    for (index, line) in field.iter().enumerate(){
+    };    
+    let walked_field = walk_n_count(&field, &agent);
+    let mut path_store:Vec<(usize,usize)> = Vec::with_capacity(10000);
+    for (idy, line) in walked_field.iter().enumerate(){
         for (idx, c) in line.iter().enumerate(){
-            let shelf = field_copy[index][idx];
-            field_copy[index][idx] = '#';
+            if *c == 'x'{
+                path_store.push((idx, idy));
+            }
+        }
+    }
+    for spot in path_store{
+        let shelf = field_copy[spot.1][spot.0];
+        field_copy[spot.1][spot.0] = '#';
             if infinite_loop_checker(&field_copy, &agent){
                 acc += 1;
             }
-            field_copy[index][idx] = shelf;
-        }
+        field_copy[spot.1][spot.0] = shelf;
     }
+    //for (index, line) in field.iter().enumerate(){
+    //    for (idx, c) in line.iter().enumerate(){
+    //        let shelf = field_copy[index][idx];
+    //        field_copy[index][idx] = '#';
+    //        if infinite_loop_checker(&field_copy, &agent){
+    //            acc += 1;
+    //        }
+    //        field_copy[index][idx] = shelf;
+    //    }
+    //}
     acc
+}
+fn walk_n_count(field:&Vec<Vec<char>>, agent:&Agent) -> Vec<Vec<char>> {
+    let mut agent = agent.clone();
+    let mut field = field.clone();
+    let bounds = field[1].len();
+    loop{
+        field[agent.y][agent.x] = 'x';
+        let mut next_step: (usize, usize) = (agent.x, agent.y);
+        match agent.dir{
+            0 => next_step = {if agent.y == 0{
+                                return field} 
+                                (agent.x, agent.y - 1)},
+            1 => next_step = {if agent.x == bounds -1{
+                                return field}
+                                (agent.x + 1, agent.y)},
+            2 => next_step = {if agent.y == bounds -1{
+                                return field}
+                                (agent.x, agent.y + 1)},
+            3 => next_step =  {if agent.x == 0{
+                                return field}
+                                (agent.x - 1, agent.y)},
+            _ => println!("impossible is nothing"),
+        }
+        if field[next_step.1][next_step.0] == '#'{
+            if agent.dir == 3{
+                agent.dir = 0;
+            } else {
+                agent.dir += 1;
+            }
+            continue;
+        }
+        agent.x = next_step.0;
+        agent.y = next_step.1;
+    }
 }
 fn infinite_loop_checker(field:&Vec<Vec<char>>, agent_ref:&Agent) -> bool {
     let mut agent_snapshots: Vec<Agent> = Vec::with_capacity(512);
