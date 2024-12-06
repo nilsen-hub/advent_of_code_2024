@@ -5,7 +5,6 @@ struct Agent{
     y:usize,
     dir:usize,
 }
-
 fn main() {
     let now = Instant::now();
     let path = "./data/data";
@@ -34,11 +33,9 @@ fn babbage(full_data: Vec<String>) -> usize{
             field_copy[index][idx] = shelf;
         }
     }
-
     acc
 }
 fn infinite_loop_checker(field:&Vec<Vec<char>>, agent_ref:&Agent) -> bool {
-    //let mut field = field.clone();
     let mut agent_snapshots: Vec<Agent> = Vec::with_capacity(512);
     let mut agent = agent_ref.clone();
     let bounds = field[1].len();
@@ -103,12 +100,4 @@ fn get_list_from_file(path: &str) -> Vec<String> {
         .lines()
         .map(String::from)
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn passes_example() {}
 }
