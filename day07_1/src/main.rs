@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, time::Instant};
+use std::{fs::read_to_string, time::Instant, iter::repeat_n,};
 #[derive(Debug, Clone, Default)]
 struct Equation{
     left: usize,
@@ -27,11 +27,11 @@ fn numberwang(line: &Equation) -> bool {
     let mut count = 2_usize.pow(operator_amount as u32);
     loop {
         count -= 1;
-        let bin_str = format!("{count:b}");
-        let mut bin_vec: Vec<char> = vec!['0';operator_amount - bin_str.len()];
-        for el in bin_str.chars(){
-            bin_vec.push(el);
-        }
+        let mut bin_str = format!("{count:b}");
+        let z_pad: String = repeat_n("0", operator_amount - bin_str.len()).collect();
+        bin_str = format!("{}{}", z_pad, bin_str);
+
+        let bin_vec: Vec<char> = bin_str.chars().collect();
         let mut acc = 0;
         for (index, el) in line.right.iter().enumerate(){
             if index == 0{
