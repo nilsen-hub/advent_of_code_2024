@@ -16,37 +16,22 @@ fn babbage(full_data: Vec<String>) -> usize{
     let mut acc = 0;
     for line in full_data{
         let line = parse_line(line);
-        println!("processing {} - {:?}", line.left, line.right);
+        //println!("processing {} - {:?}", line.left, line.right);
         if is_possible(&line){
             acc += line.left;
         }
     }
     acc
 }
-fn format_radix(mut x: u32, radix: u32) -> String {
-    let mut result = vec![];
-
-    loop {
-        let m = x % radix;
-        x = x / radix;
-
-        // will panic if you use a bad radix (< 2 or > 36).
-        result.push(std::char::from_digit(m, radix).unwrap());
-        if x == 0 {
-            break;
-        }
-    }
-    result.into_iter().rev().collect()
-}
 fn number_cat(left: &usize, right: &usize) -> usize {
     format!("{}{}", left, right).parse().unwrap()
 }
-fn possibilitiy_expander(line: &Equation, possibility: &Vec<u32>) -> bool{
+fn possibilitiy_expander(line: &Equation, possibility: &Vec<usize>) -> bool{
     let right = &line.right;
     let bounds = right.len();
     let operators = possibility;
     let mut acc: usize = right[0];
-    for (index, el) in right.iter().enumerate(){
+    for (index, _el) in right.iter().enumerate(){
         if acc > line.left{
             break;
         }
@@ -67,23 +52,32 @@ fn possibilitiy_expander(line: &Equation, possibility: &Vec<u32>) -> bool{
 }
 fn is_possible(line: &Equation) -> bool {
     let operator_amount = line.right.len() - 1;
-    let mut count = 3_u32.pow(operator_amount as u32);
+    let mut operators: Vec<usize> = vec![0;operator_amount+1];
+    let mut count: usize = 3_usize.pow(operator_amount as u32);
     // level one listing
     loop {
         count -= 1;
-        let bin_str = format_radix(count, 3);
-        let mut bin_vec: Vec<u32> = vec![0;operator_amount - bin_str.len()];
-        for el in bin_str.chars(){
-            bin_vec.push(el.to_digit(10).unwrap());
-        }
-        if possibilitiy_expander(&line, &bin_vec){
+        if possibilitiy_expander(&line, &operators){
             return true
         }
+        operators = n_radix_incrementer(operators, 3);
         if count == 0{
             break;
         }
     }
     false
+}
+fn n_radix_incrementer(mut number: Vec<usize>, radix: usize) -> Vec<usize>{
+    let mut index: usize = 0;
+    loop{
+        number[index] += 1;
+        if number[index] == radix{
+            number[index] = 0;
+            index +=1;
+            continue;
+        }
+        return number
+    }
 }
 fn parse_line(line:String) -> Equation{
     let line: Vec<&str> = line.split(':').collect();
