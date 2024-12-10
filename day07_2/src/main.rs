@@ -26,7 +26,7 @@ fn babbage(full_data: Vec<String>) -> usize{
 fn number_cat(left: &usize, right: &usize) -> usize {
     format!("{}{}", left, right).parse().unwrap()
 }
-fn possibilitiy_expander(line: &Equation, possibility: &Vec<usize>) -> bool{
+fn possibilitiy_expander(line: &Equation, possibility: &[usize;15]) -> bool{
     let right = &line.right;
     let bounds = right.len();
     let operators = possibility;
@@ -52,7 +52,7 @@ fn possibilitiy_expander(line: &Equation, possibility: &Vec<usize>) -> bool{
 }
 fn is_possible(line: &Equation) -> bool {
     let operator_amount = line.right.len() - 1;
-    let mut operators: Vec<usize> = vec![0;operator_amount+1];
+    let mut operators: [usize;15] = [0;15];
     let mut count: usize = 3_usize.pow(operator_amount as u32);
     // level one listing
     loop {
@@ -67,7 +67,7 @@ fn is_possible(line: &Equation) -> bool {
     }
     false
 }
-fn n_radix_incrementer(mut number: Vec<usize>, radix: usize) -> Vec<usize>{
+fn n_radix_incrementer(mut number: [usize;15], radix: usize) -> [usize;15] {
     let mut index: usize = 0;
     loop{
         number[index] += 1;

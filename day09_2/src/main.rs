@@ -29,20 +29,19 @@ impl HardDrive {
                 file.start_index = gaps[gap_index].start_index;
                 comp_files.push_front(file);
                 gaps.remove(gap_index);
-                continue;
-            }
-            file.start_index = gaps[gap_index].start_index;
-            gaps[gap_index].start_index += file.size;
-            gaps[gap_index].size -= file.size;
-            comp_files.push_front(file);
-            
+            } else {
+                file.start_index = gaps[gap_index].start_index;
+                gaps[gap_index].start_index += file.size;
+                gaps[gap_index].size -= file.size;
+                comp_files.push_front(file);
 
+            }
         }
         self.files = comp_files;
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 struct File {
     id: usize,
     size: usize,
