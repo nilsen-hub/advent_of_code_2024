@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fs::read_to_string, time::Instant};
+use std::{collections::VecDeque, fs::read_to_string, time::Instant, usize};
 
 #[derive(Debug, Clone)]
 struct HardDrive {
@@ -7,78 +7,36 @@ struct HardDrive {
 }
 
 impl HardDrive {
-    fn fix_start_indices(&mut self) {
-        let mut index: usize = 0;
-        let bounds = self.files.len();
-        loop {
-            if index == 0 {
-                index += 1;
-                continue;
-            }
-            let prev = self.files[index - 1];
-            self.files[index].start_index = prev.start_index + prev.size;
-            index += 1;
-            if index == bounds {
-                break;
-            }
-        }
-    }
     fn compress(&mut self) {
-        println!("new compressor!!");
-    }
-    fn compress_deprec(&mut self) {
         let mut comp_files: VecDeque<File> = VecDeque::with_capacity(5000);
         let mut files = self.files.clone();
-        // this makes front into back and VV
+        let mut gaps = self.gaps.clone();
         files.make_contiguous().reverse();
-        let mut current_file = File::default();
-        let mut current_file_idx: usize = 0;
-        let mut no_file_found = false;
-        // this is where the really clunky gears start turning.
-        'outer: loop {
-            comp_files.push_back(match files.pop_back() {
-                Some(file) => file,
-                None => break,
-            });
-            //println!("{:?}", comp_files);
-            let mut current_gap = match self.gaps.pop_front() {
-                Some(gap) => gap,
-                None => break,
-            };
-            loop {
-                // try to find a file that fits the gap
-                if files.len() == 0 {
-                    break 'outer;
+        
+        'outer: for mut file in files{
+            let mut gap_index: usize = usize::MAX;
+            for (index, gap) in gaps.make_contiguous().iter().enumerate(){
+                if file.start_index <= gap.start_index{
+                    comp_files.push_front(file);
+                    continue 'outer;
                 }
-                for (index, file) in files.make_contiguous().iter().enumerate() {
-                    if file.size <= current_gap.size {
-                        current_file_idx = index;
-                        no_file_found = false;
-                        break;
-                    }
-                    no_file_found = true;
-                }
-                // handle no file found case
-                if no_file_found {
-                    let gap_as_file = File {
-                        id: 0,
-                        size: current_gap.size,
-                        start_index: 0,
-                    };
-                    comp_files.push_back(gap_as_file);
+                if file.size <= gap.size{
+                    gap_index = index;
                     break;
-                } else {
-                    current_file = files.remove(current_file_idx).unwrap();
-                }
-                // if fits perfectly else a bit small
-                if current_file.size == current_gap.size {
-                    comp_files.push_back(current_file);
-                    break;
-                } else {
-                    current_gap.size -= current_file.size;
-                    comp_files.push_back(current_file);
                 }
             }
+            if file.size == gaps[gap_index].size{
+                file.start_index = gaps[gap_index].start_index;
+                comp_files.push_front(file);
+                gaps.remove(gap_index);
+                continue;
+            }
+            file.start_index = gaps[gap_index].start_index;
+            gaps[gap_index].start_index += file.size;
+            gaps[gap_index].size -= file.size;
+            comp_files.push_front(file);
+            
+
         }
         self.files = comp_files;
     }
@@ -110,7 +68,7 @@ impl File {
 }
 fn main() {
     let now = Instant::now();
-    let path = "./data/test";
+    let path = "./data/data";
     let full_data = get_list_from_file(path);
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
@@ -121,10 +79,8 @@ fn babbage(full_data: Vec<String>) -> usize {
     let (files, gaps) = get_files_and_gaps(full_data);
     let mut hdd = HardDrive { files, gaps };
     hdd.compress();
-    hdd.fix_start_indices();
 
     for file in hdd.files {
-        println!("{:?}", file);
         acc += file.get_checksum();
     }
 
@@ -142,13 +98,15 @@ fn get_files_and_gaps(full_data: Vec<String>) -> (VecDeque<File>, VecDeque<Gap>)
     loop {
         // kinda ugly, but should work
         let mut gap = build_gap(string[count]);
-        gap.size = files[files.len() - 1].start_index + files[files.len() - 1].size
+        gap.start_index = files.back().unwrap().start_index + files.back().unwrap().size;
         gaps.push_back(gap);
         count += 1;
         if count == bounds {
             break;
         }
-        files.push_back(build_file(count / 2, string[count]));
+        let mut file = build_file(count / 2, string[count]);
+        file.start_index = gaps.back().unwrap().start_index + gaps.back().unwrap().size;
+        files.push_back(file);
         count += 1;
         if count == bounds {
             break;
