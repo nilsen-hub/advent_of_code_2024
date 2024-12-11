@@ -23,7 +23,6 @@ fn babbage(full_data: Vec<String>) -> usize {
     let parse_ex = Instant::now();
     let x_bounds: std::ops::Range<i32> = 0..(field.field[0].len()) as i32;
     let y_bounds: std::ops::Range<i32> = 0..(field.field.len()) as i32;
-    //println!("Xbounds: {:?} Ybounds: {:?}", x_bounds, y_bounds);
     for (_key, coords) in field.coords{
         let bounds = coords.len();
         for (index, coord) in coords.iter().enumerate(){

@@ -41,7 +41,7 @@ fn babbage(full_data: Vec<String>) -> usize {
                 let antinode_x = coord.x + x_offset;
                 let antinode_y = coord.y + y_offset;
 
-                if x_bounds.contains(&(coord.x + x_offset)) && y_bounds.contains(&(coord.y + y_offset)){
+                if x_bounds.contains(&(&antinode_x)) && y_bounds.contains(&(&antinode_y)){
                     acc.insert((antinode_x, antinode_y));
                 } 
 
