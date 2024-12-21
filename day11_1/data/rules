@@ -1,3 +1,4 @@
 if 0 turn into 1
 if number has even number of digits, split in two along middle (no leading zeros)
 else multiply by 2024
+

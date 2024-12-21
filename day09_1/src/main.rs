@@ -128,7 +128,6 @@ fn babbage(full_data: Vec<String>) -> usize {
 
     acc
 }
-
 fn get_files_and_gaps(full_data: Vec<String>) -> (VecDeque<File>, VecDeque<Gap>) {
     let string: Vec<char> = full_data[0].chars().collect();
     let mut files: VecDeque<File> = VecDeque::with_capacity(5000);

@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fs::read_to_string, time::Instant, usize};
+use std::{collections::VecDeque, fs::read_to_string, ops::Index, time::Instant, usize};
 
 #[derive(Debug, Clone)]
 struct HardDrive {
@@ -8,16 +8,15 @@ struct HardDrive {
 
 impl HardDrive {
     fn compress(&mut self) {
-        let mut comp_files: VecDeque<File> = VecDeque::with_capacity(5000);
+        let mut compressed_files: VecDeque<File> = VecDeque::with_capacity(5000);
         let mut files = self.files.clone();
         let mut gaps = self.gaps.clone();
         files.make_contiguous().reverse();
-        
         'outer: for mut file in files{
             let mut gap_index: usize = usize::MAX;
             for (index, gap) in gaps.make_contiguous().iter().enumerate(){
                 if file.start_index <= gap.start_index{
-                    comp_files.push_front(file);
+                    compressed_files.push_front(file);
                     continue 'outer;
                 }
                 if file.size <= gap.size{
@@ -27,17 +26,16 @@ impl HardDrive {
             }
             if file.size == gaps[gap_index].size{
                 file.start_index = gaps[gap_index].start_index;
-                comp_files.push_front(file);
+                compressed_files.push_front(file);
                 gaps.remove(gap_index);
             } else {
                 file.start_index = gaps[gap_index].start_index;
                 gaps[gap_index].start_index += file.size;
                 gaps[gap_index].size -= file.size;
-                comp_files.push_front(file);
-
+                compressed_files.push_front(file);
             }
         }
-        self.files = comp_files;
+        self.files = compressed_files;
     }
 }
 
