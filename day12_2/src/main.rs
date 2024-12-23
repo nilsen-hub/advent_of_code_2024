@@ -43,10 +43,10 @@ impl Farm {
             let (x, y) = coords;
 
             let directions: Vec<Coords> = vec![
-                (x - 1, y), // north
-                (x + 1, y), // south
-                (x, y + 1), // east
-                (x, y - 1), // west
+                (x, y - 1), // north
+                (x, y + 1), // south
+                (x + 1, y), // east
+                (x - 1, y), // west
             ];
 
             for (index, direction) in directions.iter().enumerate() {
@@ -63,11 +63,6 @@ impl Farm {
                     }
                 }
             }
-            if plot.fence_count > 0 {
-                println!("Plant: {} Coords: {:?}", plant, coords);
-                println!("Plot fences: {:?}", plot.fences);
-            }
-
             checked_coords.insert(coords);
             plots.push(plot);
             if to_visit.len() == 0 {
@@ -122,53 +117,80 @@ impl Region {
             }
         }
         // count north edges
-        let mut direction_counter: usize = 3;
+        let mut direction_counter: usize = 0;
         loop {
             sides += self.get_sides(&fenced_plots, direction_counter);
-            if direction_counter == 0 {
+            if direction_counter == 3 {
                 break;
             }
-            direction_counter -= 1;
+            direction_counter += 1;
         }
+        //if sides &1 == 1{
+        //    sides -= 1;
+        //}
         sides
     }
     fn get_sides(&self, plots: &Vec<Plot>, direction: usize) -> usize {
         // directions by index: North, South, East, West
-        let mut plots = plots.clone();
+        let plots = plots.clone();
         let mut directed_plots: Vec<Plot> = Vec::with_capacity(50);
         let mut side_counter: usize = 0;
 
-        if direction == 0 || direction == 1 {
-            plots.sort_by_key(|plot| plot.idy);
-            for plot in plots {
-                if plot.fences[direction] {
-                    if directed_plots.len() == 0 {
-                        directed_plots.push(plot);
-                        side_counter += 1;
-                        continue;
-                    }
-                    if directed_plots.last().unwrap().idy != plot.idy - 1 {
-                        side_counter += 1;
-                    }
-                    directed_plots.push(plot);
-                }
-            }
-        } else {
-            plots.sort_by_key(|plot| plot.idx);
-            for plot in plots {
-                if plot.fences[direction] {
-                    if directed_plots.len() == 0 {
-                        directed_plots.push(plot);
-                        side_counter += 1;
-                        continue;
-                    }
-                    if directed_plots.last().unwrap().idx != plot.idx - 1 {
-                        side_counter += 1;
-                    }
-                    directed_plots.push(plot);
-                }
+        for plot in plots{
+            if plot.fences[direction]{
+                directed_plots.push(plot);
             }
         }
+
+        if direction == 0 || direction == 1 {
+            // looking for north or south faceing sides
+            // sorting by Y axis, gives us the lines
+            directed_plots.sort_by_key(|plot| plot.idy);
+
+            for (index, plot) in directed_plots.iter().enumerate(){
+                if index == 0{
+                    side_counter += 1;
+                    continue;
+                }
+                if plot.idy == directed_plots[index - 1].idy{
+                    if plot.idx == directed_plots[index - 1].idx + 1 || plot.idx == directed_plots[index - 1].idx - 1{
+                        continue;
+                    }
+                }
+                side_counter += 1;
+            }
+            
+        } else {
+            directed_plots.sort_by_key(|plot| plot.idx);
+            //if direction == 2{
+            //    for plot in &directed_plots{
+            //        println!("{:?}", plot);
+            //    }
+            //}
+            for (index, plot) in directed_plots.iter().enumerate(){
+                if index == 0{
+                    //if direction == 2{
+                    //    println!("{:?}", plot);
+                    //}
+                    side_counter += 1;
+                    continue;
+                }
+                //if plot.idx == directed_plots[index - 1].idx && plot.idy == directed_plots[index - 1].idy + 1{
+                //    continue;
+                //}
+                if plot.idx == directed_plots[index - 1].idx{
+                    if plot.idy == directed_plots[index - 1].idy + 1 || plot.idy == directed_plots[index - 1].idy - 1{
+                        continue;
+                    }
+                }
+                //if direction == 2{
+                //    println!("{:?}", plot);
+                //}
+                
+                side_counter += 1;
+            }
+        }
+        //println!("direction: {direction} sides: {side_counter}");
         side_counter
     }
 }
@@ -185,7 +207,7 @@ type Coords = (usize, usize);
 
 fn main() {
     let now = Instant::now();
-    let path = "./data/test_s";
+    let path = "./data/data";
     let full_data = get_list_from_file(path);
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
@@ -197,12 +219,14 @@ fn babbage(full_data: Vec<String>) -> usize {
     let mut farm = get_farm(field);
     farm.walker();
     for region in farm.regions {
+        let side_count = region.side_counter();
         println!(
-            "Region area: {} amount of sides {}",
+            "Region area: {} | kind: {} | amount of sides {}",
             region.area,
-            region.side_counter()
+            region.plant,
+            side_count,
         );
-        acc += region.side_counter() * region.area;
+        acc += side_count * region.area;
     }
     acc
 }
