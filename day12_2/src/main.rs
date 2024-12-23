@@ -6,8 +6,8 @@ use std::{
 #[derive(Debug, Clone)]
 struct Farm {
     regions: Vec<Region>,
-    field: field,
-    mapped: HashSet<coords>,
+    field: Field,
+    mapped: HashSet<Coords>,
 }
 
 impl Farm {
@@ -17,7 +17,7 @@ impl Farm {
                 if *plot == '+' {
                     continue;
                 }
-                let coords: coords = (idx, idy);
+                let coords: Coords = (idx, idy);
                 if self.mapped.contains(&coords) {
                     continue;
                 }
@@ -27,14 +27,14 @@ impl Farm {
             }
         }
     }
-    fn map_region(&self, coords: coords) -> Region {
+    fn map_region(&self, coords: Coords) -> Region {
         // set up region content variables
         let (x, y) = coords;
         let plant: char = self.field[y][x];
         let mut coords = coords;
         let mut plots: Vec<Plot> = Vec::new();
-        let mut checked_coords: HashSet<coords> = HashSet::new();
-        let mut to_visit: VecDeque<coords> = VecDeque::new();
+        let mut checked_coords: HashSet<Coords> = HashSet::new();
+        let mut to_visit: VecDeque<Coords> = VecDeque::new();
 
         // make loop to build an register all connected plots of current plant
         'outer: loop {
@@ -42,7 +42,7 @@ impl Farm {
             let mut plot = self.get_plot(coords);
             let (x, y) = coords;
 
-            let directions: Vec<coords> = vec![
+            let directions: Vec<Coords> = vec![
                 (x - 1, y), // north
                 (x + 1, y), // south
                 (x, y + 1), // east
@@ -53,6 +53,7 @@ impl Farm {
                 if self.field[direction.1][direction.0] == plant {
                     to_visit.push_back(*direction);
                 } else {
+                    plot.fence_count += 1;
                     match index {
                         0 => plot.fences[index] = true,
                         1 => plot.fences[index] = true,
@@ -62,6 +63,11 @@ impl Farm {
                     }
                 }
             }
+            if plot.fence_count > 0 {
+                println!("Plant: {} Coords: {:?}", plant, coords);
+                println!("Plot fences: {:?}", plot.fences);
+            }
+
             checked_coords.insert(coords);
             plots.push(plot);
             if to_visit.len() == 0 {
@@ -87,11 +93,12 @@ impl Farm {
         };
         region
     }
-    fn get_plot(&self, coords: coords) -> Plot {
+    fn get_plot(&self, coords: Coords) -> Plot {
         let (idx, idy) = coords;
         let plot = Plot {
             idx,
             idy,
+            fence_count: 0,
             fences: vec![false; 4],
         };
         plot
@@ -102,27 +109,83 @@ struct Region {
     plant: char,
     plots: Vec<Plot>,
     area: usize,
-    coords: HashSet<coords>,
+    coords: HashSet<Coords>,
 }
-impl region {
+impl Region {
     fn side_counter(&self) -> usize {
         let mut sides: usize = 0;
+        let mut fenced_plots: Vec<Plot> = Vec::with_capacity(100);
+        let plots = self.plots.clone();
+        for plot in plots {
+            if plot.fence_count > 0 {
+                fenced_plots.push(plot);
+            }
+        }
+        // count north edges
+        let mut direction_counter: usize = 3;
+        loop {
+            sides += self.get_sides(&fenced_plots, direction_counter);
+            if direction_counter == 0 {
+                break;
+            }
+            direction_counter -= 1;
+        }
         sides
+    }
+    fn get_sides(&self, plots: &Vec<Plot>, direction: usize) -> usize {
+        // directions by index: North, South, East, West
+        let mut plots = plots.clone();
+        let mut directed_plots: Vec<Plot> = Vec::with_capacity(50);
+        let mut side_counter: usize = 0;
+
+        if direction == 0 || direction == 1 {
+            plots.sort_by_key(|plot| plot.idy);
+            for plot in plots {
+                if plot.fences[direction] {
+                    if directed_plots.len() == 0 {
+                        directed_plots.push(plot);
+                        side_counter += 1;
+                        continue;
+                    }
+                    if directed_plots.last().unwrap().idy != plot.idy - 1 {
+                        side_counter += 1;
+                    }
+                    directed_plots.push(plot);
+                }
+            }
+        } else {
+            plots.sort_by_key(|plot| plot.idx);
+            for plot in plots {
+                if plot.fences[direction] {
+                    if directed_plots.len() == 0 {
+                        directed_plots.push(plot);
+                        side_counter += 1;
+                        continue;
+                    }
+                    if directed_plots.last().unwrap().idx != plot.idx - 1 {
+                        side_counter += 1;
+                    }
+                    directed_plots.push(plot);
+                }
+            }
+        }
+        side_counter
     }
 }
 #[derive(Debug, Clone)]
 struct Plot {
     idx: usize,
     idy: usize,
+    fence_count: usize,
     fences: Vec<bool>, // by index: North, South, East, West
 }
 
-type field = Vec<Vec<char>>;
-type coords = (usize, usize);
+type Field = Vec<Vec<char>>;
+type Coords = (usize, usize);
 
 fn main() {
     let now = Instant::now();
-    let path = "./data/data";
+    let path = "./data/test_s";
     let full_data = get_list_from_file(path);
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
@@ -133,9 +196,17 @@ fn babbage(full_data: Vec<String>) -> usize {
     let field = parse(full_data);
     let mut farm = get_farm(field);
     farm.walker();
+    for region in farm.regions {
+        println!(
+            "Region area: {} amount of sides {}",
+            region.area,
+            region.side_counter()
+        );
+        acc += region.side_counter() * region.area;
+    }
     acc
 }
-fn get_farm(field: field) -> Farm {
+fn get_farm(field: Field) -> Farm {
     let farm = Farm {
         regions: Vec::new(),
         field,
@@ -144,10 +215,10 @@ fn get_farm(field: field) -> Farm {
     farm
 }
 
-fn parse(data: Vec<String>) -> field {
+fn parse(data: Vec<String>) -> Field {
     // padding the field with + to avoid edges
     let padding: Vec<char> = vec!['+'; data[0].len() + 2];
-    let mut output: field = field::with_capacity(142);
+    let mut output: Field = Field::with_capacity(142);
     output.push(padding.clone());
     for line in data {
         let output_line = format!("{}{}{}", '+', line, '+');
