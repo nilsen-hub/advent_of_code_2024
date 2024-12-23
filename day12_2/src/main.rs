@@ -34,7 +34,6 @@ impl Farm {
         let mut coords = coords;
         let mut plots: Vec<Plot> = Vec::new();
         let mut checked_coords: HashSet<coords> = HashSet::new();
-        let mut to_visit_checker: HashSet<coords> = HashSet::new();
         let mut to_visit: VecDeque<coords> = VecDeque::new();
 
         // make loop to build an register all connected plots of current plant
@@ -50,11 +49,17 @@ impl Farm {
                 (x, y - 1), // west
             ];
 
-            for direction in directions {
+            for (index, direction) in directions.iter().enumerate() {
                 if self.field[direction.1][direction.0] == plant {
-                    to_visit.push_back(direction);
+                    to_visit.push_back(*direction);
                 } else {
-                    plot.fences += 1;
+                    match index {
+                        0 => plot.fences[index] = true,
+                        1 => plot.fences[index] = true,
+                        2 => plot.fences[index] = true,
+                        3 => plot.fences[index] = true,
+                        _ => panic!("Something in map_region really messed up"),
+                    }
                 }
             }
             checked_coords.insert(coords);
@@ -73,16 +78,11 @@ impl Farm {
             }
         }
 
-        let mut perimeter: usize = 0;
-        for plot in &plots {
-            perimeter += plot.fences;
-        }
         let area = &plots.len();
         let region = Region {
             plant,
             plots,
             area: *area,
-            perimeter,
             coords: checked_coords,
         };
         region
@@ -92,7 +92,7 @@ impl Farm {
         let plot = Plot {
             idx,
             idy,
-            fences: 0,
+            fences: vec![false; 4],
         };
         plot
     }
@@ -102,14 +102,19 @@ struct Region {
     plant: char,
     plots: Vec<Plot>,
     area: usize,
-    perimeter: usize,
     coords: HashSet<coords>,
 }
-#[derive(Debug, Clone, Copy)]
+impl region {
+    fn side_counter(&self) -> usize {
+        let mut sides: usize = 0;
+        sides
+    }
+}
+#[derive(Debug, Clone)]
 struct Plot {
     idx: usize,
     idy: usize,
-    fences: usize,
+    fences: Vec<bool>, // by index: North, South, East, West
 }
 
 type field = Vec<Vec<char>>;
@@ -128,9 +133,6 @@ fn babbage(full_data: Vec<String>) -> usize {
     let field = parse(full_data);
     let mut farm = get_farm(field);
     farm.walker();
-    for region in farm.regions {
-        acc += region.area * region.perimeter;
-    }
     acc
 }
 fn get_farm(field: field) -> Farm {

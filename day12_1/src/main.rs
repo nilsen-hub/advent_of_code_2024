@@ -6,8 +6,8 @@ use std::{
 #[derive(Debug, Clone)]
 struct Farm {
     regions: Vec<Region>,
-    field: field,
-    mapped: HashSet<coords>,
+    field: Field,
+    mapped: HashSet<Coords>,
 }
 
 impl Farm {
@@ -17,7 +17,7 @@ impl Farm {
                 if *plot == '+' {
                     continue;
                 }
-                let coords: coords = (idx, idy);
+                let coords: Coords = (idx, idy);
                 if self.mapped.contains(&coords) {
                     continue;
                 }
@@ -27,22 +27,20 @@ impl Farm {
             }
         }
     }
-    fn map_region(&self, coords: coords) -> Region {
+    fn map_region(&self, coords: Coords) -> Region {
         // set up region content variables
         let (x, y) = coords;
         let plant: char = self.field[y][x];
+        let mut perimeter: usize = 0;
         let mut coords = coords;
-        let mut plots: Vec<Plot> = Vec::new();
-        let mut checked_coords: HashSet<coords> = HashSet::new();
-        let mut to_visit: VecDeque<coords> = VecDeque::new();
+        let mut checked_coords: HashSet<Coords> = HashSet::new();
+        let mut to_visit: VecDeque<Coords> = VecDeque::new();
 
-        // make loop to build an register all connected plots of current plant
         'outer: loop {
             //first build plot struct
-            let mut plot = self.get_plot();
             let (x, y) = coords;
 
-            let directions: Vec<coords> = vec![
+            let directions: Vec<Coords> = vec![
                 (x - 1, y), // north
                 (x + 1, y), // south
                 (x, y + 1), // east
@@ -53,55 +51,41 @@ impl Farm {
                 if self.field[direction.1][direction.0] == plant {
                     to_visit.push_back(direction);
                 } else {
-                    plot.fences += 1;
+                    perimeter += 1;
                 }
             }
+
             checked_coords.insert(coords);
-            plots.push(plot);
-            if to_visit.len() == 0 {
-                break;
-            }
+
             loop {
+                if to_visit.len() == 0 {
+                    break 'outer;
+                }
                 coords = to_visit.pop_front().unwrap();
                 if !checked_coords.contains(&coords) {
                     break;
                 }
-                if to_visit.len() == 0 {
-                    break 'outer;
-                }
             }
         }
 
-        let mut perimeter: usize = 0;
-        for plot in &plots {
-            perimeter += plot.fences;
-        }
-        let area = &plots.len();
         let region = Region {
-            area: *area,
+            area: checked_coords.len(),
             perimeter,
             coords: checked_coords,
         };
+
         region
-    }
-    fn get_plot(&self) -> Plot {
-        let plot = Plot { fences: 0 };
-        plot
     }
 }
 #[derive(Debug, Clone)]
 struct Region {
     area: usize,
     perimeter: usize,
-    coords: HashSet<coords>,
-}
-#[derive(Debug, Clone, Copy)]
-struct Plot {
-    fences: usize,
+    coords: HashSet<Coords>,
 }
 
-type field = Vec<Vec<char>>;
-type coords = (usize, usize);
+type Field = Vec<Vec<char>>;
+type Coords = (usize, usize);
 
 fn main() {
     let now = Instant::now();
@@ -121,7 +105,7 @@ fn babbage(full_data: Vec<String>) -> usize {
     }
     acc
 }
-fn get_farm(field: field) -> Farm {
+fn get_farm(field: Field) -> Farm {
     let farm = Farm {
         regions: Vec::new(),
         field,
@@ -130,10 +114,10 @@ fn get_farm(field: field) -> Farm {
     farm
 }
 
-fn parse(data: Vec<String>) -> field {
+fn parse(data: Vec<String>) -> Field {
     // padding the field with + to avoid edges
     let padding: Vec<char> = vec!['+'; data[0].len() + 2];
-    let mut output: field = field::with_capacity(142);
+    let mut output: Field = Field::with_capacity(142);
     output.push(padding.clone());
     for line in data {
         let output_line = format!("{}{}{}", '+', line, '+');
