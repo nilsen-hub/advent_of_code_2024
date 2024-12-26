@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashSet, HashMap, VecDeque},
     fs::read_to_string,
     time::Instant,
 };
@@ -12,8 +12,8 @@ struct Farm {
 
 impl Farm {
     fn walker(&mut self) {
-        for (idy, line) in self.field.iter().enumerate() {
-            for (idx, plot) in line.iter().enumerate() {
+        for (idy, line) in self.field.iter().enumerate(){
+            for (idx, plot) in line.iter().enumerate(){
                 if *plot == '+' {
                     continue;
                 }
@@ -36,7 +36,7 @@ impl Farm {
         let mut checked_coords: HashSet<Coords> = HashSet::new();
         let mut to_visit: VecDeque<Coords> = VecDeque::new();
 
-        // make loop to build an register all connected plots of current plant
+        // make loop to build and register all connected plots of current plant
         'outer: loop {
             //first build plot struct
             let mut plot = self.get_plot(coords);
@@ -81,7 +81,6 @@ impl Farm {
 
         let area = &plots.len();
         let region = Region {
-            plant,
             plots,
             area: *area,
             coords: checked_coords,
@@ -101,7 +100,6 @@ impl Farm {
 }
 #[derive(Debug, Clone)]
 struct Region {
-    plant: char,
     plots: Vec<Plot>,
     area: usize,
     coords: HashSet<Coords>,
@@ -116,7 +114,6 @@ impl Region {
                 fenced_plots.push(plot);
             }
         }
-        // count north edges
         let mut direction_counter: usize = 0;
         loop {
             sides += self.get_sides(&fenced_plots, direction_counter);
@@ -125,9 +122,6 @@ impl Region {
             }
             direction_counter += 1;
         }
-        //if sides &1 == 1{
-        //    sides -= 1;
-        //}
         sides
     }
     fn get_sides(&self, plots: &Vec<Plot>, direction: usize) -> usize {
@@ -135,62 +129,51 @@ impl Region {
         let plots = plots.clone();
         let mut directed_plots: Vec<Plot> = Vec::with_capacity(50);
         let mut side_counter: usize = 0;
+        let mut plot_map:HashMap<usize,Vec<Plot>> = HashMap::new();
 
         for plot in plots{
             if plot.fences[direction]{
                 directed_plots.push(plot);
             }
         }
-
+        
         if direction == 0 || direction == 1 {
-            // looking for north or south faceing sides
-            // sorting by Y axis, gives us the lines
-            directed_plots.sort_by_key(|plot| plot.idy);
-
-            for (index, plot) in directed_plots.iter().enumerate(){
-                if index == 0{
-                    side_counter += 1;
-                    continue;
-                }
-                if plot.idy == directed_plots[index - 1].idy{
-                    if plot.idx == directed_plots[index - 1].idx + 1 || plot.idx == directed_plots[index - 1].idx - 1{
+         // check north and south fences
+            for plot in directed_plots{
+                plot_map.entry(plot.idy).and_modify(|vector| vector.push(plot.clone())).or_insert(vec![plot]);
+            }
+            for (_key, mut plot_vector) in plot_map{
+                plot_vector.sort_by_key(|plot| plot.idx);
+                for (index, plot) in plot_vector.iter().enumerate(){
+                    if index == 0 {
+                        side_counter += 1;
                         continue;
                     }
+                    if plot.idx == plot_vector[index - 1].idx + 1{
+                        continue;
+                    }
+                    side_counter += 1;
                 }
-                side_counter += 1;
-            }
-            
+            }    
         } else {
-            directed_plots.sort_by_key(|plot| plot.idx);
-            //if direction == 2{
-            //    for plot in &directed_plots{
-            //        println!("{:?}", plot);
-            //    }
-            //}
-            for (index, plot) in directed_plots.iter().enumerate(){
-                if index == 0{
-                    //if direction == 2{
-                    //    println!("{:?}", plot);
-                    //}
+         // check east and west fences
+            for plot in directed_plots{
+                plot_map.entry(plot.idx).and_modify(|vector| vector.push(plot.clone())).or_insert(vec![plot]);
+        }
+        for (_key, mut plot_vector) in plot_map{
+            plot_vector.sort_by_key(|plot| plot.idy);
+            for (index, plot) in plot_vector.iter().enumerate(){
+                if index == 0 {
                     side_counter += 1;
                     continue;
                 }
-                //if plot.idx == directed_plots[index - 1].idx && plot.idy == directed_plots[index - 1].idy + 1{
-                //    continue;
-                //}
-                if plot.idx == directed_plots[index - 1].idx{
-                    if plot.idy == directed_plots[index - 1].idy + 1 || plot.idy == directed_plots[index - 1].idy - 1{
-                        continue;
-                    }
+                if plot.idy == plot_vector[index - 1].idy + 1{
+                    continue;
                 }
-                //if direction == 2{
-                //    println!("{:?}", plot);
-                //}
-                
                 side_counter += 1;
             }
+        }   
         }
-        //println!("direction: {direction} sides: {side_counter}");
         side_counter
     }
 }
@@ -204,7 +187,6 @@ struct Plot {
 
 type Field = Vec<Vec<char>>;
 type Coords = (usize, usize);
-
 fn main() {
     let now = Instant::now();
     let path = "./data/data";
@@ -220,12 +202,6 @@ fn babbage(full_data: Vec<String>) -> usize {
     farm.walker();
     for region in farm.regions {
         let side_count = region.side_counter();
-        println!(
-            "Region area: {} | kind: {} | amount of sides {}",
-            region.area,
-            region.plant,
-            side_count,
-        );
         acc += side_count * region.area;
     }
     acc
