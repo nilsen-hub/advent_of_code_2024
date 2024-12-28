@@ -23,7 +23,7 @@ impl Farm {
                 }
                 let region = self.map_region(coords);
                 self.regions.push(region.clone());
-                self.mapped.extend(region.coords);
+                self.mapped.extend(region.coords.clone());
             }
         }
     }
@@ -214,7 +214,6 @@ fn get_farm(field: Field) -> Farm {
     };
     farm
 }
-
 fn parse(data: Vec<String>) -> Field {
     // padding the field with + to avoid edges
     let padding: Vec<char> = vec!['+'; data[0].len() + 2];
