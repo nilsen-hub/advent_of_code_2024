@@ -11,9 +11,30 @@ struct ClawMachine{
 #[derive(Debug, Clone)]
 struct Solver{
     machine: ClawMachine,
-    presses: usize,
-    tokens: usize,
-    position: Coords,
+    tokens_used: usize,
+}
+
+impl Solver{
+    fn solve(&mut self){
+        let target = self.machine.target;
+        let a = self.machine.a;
+        let b = self.machine.b;
+
+        for index in 0..100{
+            let position: Coords = (a.0 * index, a.1 * index);
+            if position > target{
+                break;
+            }
+            let bx_to_go = target.0 - position.0;
+            if (b.0 * 100) + position.0 >= target.0 && bx_to_go % b.0 == 0{
+                let b_presses = bx_to_go / b.0;
+                if (b.1 * b_presses) + position.1 == target.1{
+                    self.tokens_used = (index * 3) + b_presses;
+                    break;
+                }
+            }
+        }
+    }
 }
 #[derive(Debug, Clone)]
 struct InputData{
@@ -86,7 +107,7 @@ impl InputData{
 }
 fn main() {
     let now = Instant::now();
-    let path = "./data/test";
+    let path = "./data/data";
     let full_data = get_list_from_file(path);
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
@@ -96,22 +117,19 @@ fn babbage(input: Vec<String>) -> usize{
     let mut acc = 0;
     let mut input = InputData{input,};
     loop{
-        let solver = Solver{
+        let mut solver = Solver{
             machine: match input.get_next(){
                 Some(machine) => machine,
                 None => break,
             },
-            presses: 0,
-            tokens: usize::MAX,
-            position: (0,0),
+            tokens_used: 0,
         };
-        acc += 1;
-        println!("button a: {:?} button b: {:?} target: {:?}", solver.machine.a, solver.machine.b, solver.machine.target);
+        solver.solve();
+        if solver.tokens_used > 0{
+            acc += solver.tokens_used;
+        }
     }
     acc
-}
-fn solve(solver: Solver){
-    
 }
 fn get_list_from_file(path: &str) -> Vec<String> {
     read_to_string(path)

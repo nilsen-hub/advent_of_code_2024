@@ -83,7 +83,6 @@ struct Region {
     perimeter: usize,
     coords: HashSet<Coords>,
 }
-
 type Field = Vec<Vec<char>>;
 type Coords = (usize, usize);
 
@@ -113,7 +112,6 @@ fn get_farm(field: Field) -> Farm {
     };
     farm
 }
-
 fn parse(data: Vec<String>) -> Field {
     // padding the field with + to avoid edges
     let padding: Vec<char> = vec!['+'; data[0].len() + 2];
