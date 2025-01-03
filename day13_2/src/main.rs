@@ -37,54 +37,35 @@ struct Solver {
 }
 
 impl Solver {
-    fn solve(&mut self) {
+    fn solve(&mut self){
+        
+    }
+    fn solve_deprec(&mut self) {
         let target = self.machine.target;
         let a = self.machine.a;
         let b = self.machine.b;
 
-        let ax_into_target: (usize, usize) = (target.0 / a.0, target.0 % a.0);
-        let ay_into_target: (usize, usize) = (target.1 / a.1, target.1 % a.1);
-        let mut a_press: (usize, usize) = (0, 0);
+        let mut tar_x_factors = prime_factorization(target.0);
+        let mut simplified_x_target: usize = 1;
 
-        if ax_into_target.0 > ay_into_target.0 {
-            a_press = ax_into_target;
-        } else {
-            a_press = ay_into_target;
+        loop {
+            let factor = tar_x_factors.pop_first().unwrap();
+            if tar_x_factors.len() == 1{
+                break
+            }
+            simplified_x_target *= factor.0.pow(factor.1 as u32);
         }
-
-        let bx_into_target: (usize, usize) = (target.0 / b.0, target.0 % b.0);
-        let by_into_target: (usize, usize) = (target.1 / b.1, target.1 % b.1);
-        let mut b_press: (usize, usize) = (0, 0);
-
-        if bx_into_target.0 > by_into_target.0 {
-            b_press = bx_into_target;
-        } else {
-            b_press = by_into_target;
-        }
-
-        println!(
-            "A presses needed to fill the number: {} with {} remaining",
-            a_press.0, a_press.1
-        );
-        println!(
-            "B presses needed to fill the number: {} with {} remaining",
-            b_press.0, b_press.1
-        );
-
-        for index in 0..10000000000000 {
+        let multiplier = tar_x_factors.pop_first().unwrap().0;
+        for index in 0..10000000 {
             let position: Coords = (a.0 * index, a.1 * index);
-            if position > target {
+            if position.0 > simplified_x_target{
                 break;
             }
-            let bx_to_go = target.0 - position.0;
-            if index % 1000000000 == 0 {
-                println!("{index}");
-            }
+            let bx_to_go = simplified_x_target - position.0;
             if bx_to_go % b.0 == 0 {
-                let b_presses = bx_to_go / b.0;
-                if (b.1 * b_presses) + position.1 == target.1 {
-                    println!("a presses: {} b presses: {}", index, b_presses);
-                    self.tokens_used = (index * 3) + b_presses;
+                let b_presses = (bx_to_go / b.0) * multiplier;
+                if (b.1 * b_presses) + (position.1 * multiplier) == target.1 {
+                    self.tokens_used = ((index * 3) + b_presses) * multiplier;
                     break;
                 }
             }
@@ -217,28 +198,18 @@ fn babbage(input: Vec<String>) -> usize {
         }
         println!("");
 
-        print!("combined factors: ");
-        for (factor, _freq) in comb_x_fact {
-            print!("{},", factor);
-        }
-        print!(": ");
-        for (factor, _freq) in comb_Y_fact {
-            print!("{},", factor);
-        }
-        println!("");
-
         print!("target factors: ");
-        for (factor, _freq) in t_0_factors {
-            print!("{},", factor);
+        for (factor, freq) in t_0_factors {
+            print!("{}:{}  ", factor, freq);
         }
-        print!(": ");
-        for (factor, _freq) in t_1_factors {
-            print!("{},", factor);
+        print!("| ");
+        for (factor, freq) in t_1_factors {
+            print!("{}:{}  ", factor, freq);
         }
         println!("");
         println!("");
 
-        solver.solve();
+        //solver.solve();
         if solver.tokens_used != usize::MAX {
             acc += solver.tokens_used;
             // println!("a presses: {} b presses: {}", solver.a_presses, solver.b_presses);
@@ -246,7 +217,7 @@ fn babbage(input: Vec<String>) -> usize {
         } else {
             println!("is not solveable");
         }
-        println!("function is_solveable: {}", solver.machine.is_solveable());
+        //println!("function is_solveable: {}", solver.machine.is_solveable());
         println!("");
     }
     acc

@@ -1,6 +1,5 @@
-use core::time;
 use std::{fs::read_to_string, time::Instant, usize};
-type Coords = (usize, usize);
+type Coords = (i128, i128);
 
 #[derive(Debug, Clone)]
 struct ClawMachine {
@@ -11,16 +10,33 @@ struct ClawMachine {
 #[derive(Debug, Clone)]
 struct Solver {
     machine: ClawMachine,
-    tokens_used: usize,
+    tokens_used: i128,
 }
 
 impl Solver {
+    fn solve_new(&mut self){
+        let target = self.machine.target;
+        let a = self.machine.a;
+        let b = self.machine.b;
+
+        let mut bxm = target.0 / b.0;
+        loop {
+            if target.0 - b.0 * bxm % a.0 == 0{
+                
+            }
+            if bxm == 0 {
+                break;
+            }
+            bxm -= 1;
+        }       
+    }
     fn solve(&mut self) {
         let target = self.machine.target;
         let a = self.machine.a;
         let b = self.machine.b;
 
         for index in 0..100 {
+
             let position: Coords = (a.0 * index, a.1 * index);
             let bx_to_go = target.0 - position.0;
             if (b.0 * 100) + position.0 >= target.0 && bx_to_go % b.0 == 0 {
@@ -61,8 +77,8 @@ impl InputData {
     }
     fn get_coords(&self, to_clean: &String) -> Coords {
         let string_ch: Vec<char> = to_clean.chars().collect();
-        let mut x: usize = 0;
-        let mut y: usize = 0;
+        let mut x:i128  = 0;
+        let mut y:i128  = 0;
         let mut switch: bool = true;
         let mut skippy: usize = 0;
         for (index, c) in string_ch.iter().enumerate() {
@@ -83,7 +99,7 @@ impl InputData {
         }
         return (x, y);
     }
-    fn get_int_from_char(&self, chars: &Vec<char>, index: &usize) -> (usize, usize) {
+    fn get_int_from_char(&self, chars: &Vec<char>, index: &usize) -> (i128, usize) {
         // returns tuple: (int, end_index + 1)
         let mut temp_number: Vec<char> = Vec::with_capacity(6);
         let mut count = *index;
@@ -96,9 +112,9 @@ impl InputData {
             break;
         }
         let as_string: String = temp_number.iter().collect();
-        let number: usize = as_string.parse().unwrap();
+        let number:i128  = as_string.parse().unwrap();
 
-        (number, count + 1)
+        (number, 1 + count)
     }
 }
 fn main() {
@@ -109,12 +125,10 @@ fn main() {
     println!("The answer is: {}", answer);
     println!("program runtime: {}", now.elapsed().as_micros());
 }
-fn babbage(input: Vec<String>) -> usize {
+fn babbage(input: Vec<String>) -> i128 {
     let mut acc = 0;
     let mut input = InputData { input };
-    let mut time_spent_parsing: usize = 0;
     loop {
-        let now = Instant::now();
         let mut solver = Solver {
             machine: match input.get_next() {
                 Some(machine) => machine,
@@ -122,14 +136,24 @@ fn babbage(input: Vec<String>) -> usize {
             },
             tokens_used: 0,
         };
-        time_spent_parsing += now.elapsed().as_micros() as usize;
+        println!("GCD A: {}, {}", gcd(solver.machine.target.0, solver.machine.a.0), gcd(solver.machine.target.1, solver.machine.a.1));
+        println!("GCD B: {}, {}", gcd(solver.machine.target.0, solver.machine.b.0), gcd(solver.machine.target.1, solver.machine.b.1));
         solver.solve();
         if solver.tokens_used > 0 {
+            println!("good");
             acc += solver.tokens_used;
+        } else {
+            println!("bad");
         }
     }
-    println!("Time spent parsing: {}", time_spent_parsing);
     acc
+}
+fn gcd(a:i128, b:i128) -> i128 {
+    if b == 0{
+        return a
+    } else {
+        return gcd(b,a % b)
+    }
 }
 fn get_list_from_file(path: &str) -> Vec<String> {
     read_to_string(path)
