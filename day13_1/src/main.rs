@@ -21,7 +21,7 @@ struct Solver {
 }
 
 impl Solver {
-    fn solve_copy(&mut self){
+    fn solve_old(&mut self){
         let target = self.machine.target;
         let a = self.machine.a;
         let b = self.machine.b;
@@ -40,74 +40,76 @@ impl Solver {
         }
         println!("itercount: {itercount}");
     }
-    fn solve(&mut self) {
+    fn solve(&mut self){
         let target = self.machine.target;
         let a = self.machine.a;
         let b = self.machine.b;
 
         let lcm = lcm(a.0, b.0);
         let a_increment = lcm/a.0;
-        let b_increment = lcm/b.0;
         let mut increment: i128 = 1;
 
         let mut first_y: i128 = 0;
         let mut index: i128 = 0;
-        let mut itercount: i128 = 0;
-        loop{
-            itercount += 1;
-            let position: Coords = (a.0 * index, a.1 * index);
-            
-            if position > target{
-                println!("itercount: {itercount}");
+        let mut delta_checked = false;
+        let mut iter_to_go: i128 = 0;
+        let mut increment_y: i128 = 0;
+        let first_mod: i128 = target.0 % b.0;
+        let mut bx_mod_counter: i128 = 0;
+
+
+        loop {
+            if index > 100{
                 break;
             }
+            let position: Coords = (a.0 * index, a.1 * index);
             let bx_to_go = target.0 - position.0;
-            if bx_to_go % b.0 == 0 {
+            let bx_mod = bx_to_go % b.0;
+            if bx_mod == first_mod{
+                bx_mod_counter += 1;
+            }
+            if bx_mod_counter == 10 && delta_checked == false{
+                if target.1 % a.1 == 0 && a.0 * target.1 / a.1 == target.0{
+                    self.tokens_used = (target.1 / a.1) * 3;
+                    break;
+                } else {
+                    break;
+                }
+            }
+            if bx_mod == 0 {
                 increment = a_increment;
                 let b_presses = bx_to_go / b.0;
                 let current_y = (b.1 * b_presses) + position.1;
-                if first_y == 0{
-                    first_y = current_y;
-                } else {
-                    let y_delta = first_y.abs_diff(current_y) as i128;
-                    let diff = target.1.abs_diff(current_y) as i128;
-                    if diff % y_delta.abs() == 0{
-                        let remaining_increments = diff.abs() / y_delta.abs();
-                        let remaining_a_presses= remaining_increments * a_increment;
-                        let remaining_b_presses= remaining_increments * b_increment;
-                        let calc = (remaining_a_presses * a.1) + (remaining_b_presses * b.1);
-                        //println!("apre: {}", remaining_a_presses);
-                        //println!("bpre: {}", remaining_b_presses);
-                        //println!("rema: {}", remaining_increments);
-                        //println!("diff: {}", diff);
-                        //println!("calc: {}", calc);
-                        //println!("");
-                        let one_cycle = a.1 * a_increment + b.1 * b_increment;
-                        println!("cycle: {}  delta: {}", one_cycle, y_delta);
-                        if current_y < target.1 {
-                            println!("current y + diff: {} diff: {} ", current_y + diff.abs(), diff.abs());
-                        } else {
-                            println!("current y - diff: {} diff: {} ", current_y - diff.abs(), diff.abs());
-                        }
-                        
-                        
-                        index += remaining_increments.abs() * increment;
-                        //println!("index: {}", index);
-                        break; 
-                    }
-                    break;
-                }
-                //}
-                if (b.1 * b_presses) + position.1 == target.1 {
-                    println!("itercount: {itercount}");
+                if  current_y == target.1 {
                     self.tokens_used = (index * 3) + b_presses;
                     break;
+                }
+                if first_y == 0{
+                    first_y = current_y;
+                    index += increment;
+                    continue;
+                }
+
+                if !delta_checked {
+                    delta_checked = true;
+                    increment_y = first_y.abs_diff(current_y) as i128;
+                    let delta_y = current_y.abs_diff(target.1) as i128;
+                    if delta_y % increment_y != 0{
+                        break;
+                    }
+                }
+                let delta_y = current_y.abs_diff(target.1) as i128;
+                iter_to_go = delta_y / increment_y;
+                let increment_multiplier = iter_to_go / 2;
+                if increment_multiplier > 0{
+                    index += increment * increment_multiplier;
+                    continue;
                 }
             }
             index += increment;
         }
+        
     }
-   
 }
 #[derive(Debug, Clone)]
 struct InputData {
@@ -127,7 +129,6 @@ impl InputData {
             self.input.pop().unwrap();
         }
         let mut target = self.get_coords(&proto_claw[0]);
-        (target.0, target.1) = (target.0 + 10000000000000, target.1 + 10000000000000);
         let output = ClawMachine {
             a: self.get_coords(&proto_claw[2]),
             b: self.get_coords(&proto_claw[1]),
@@ -180,7 +181,7 @@ impl InputData {
 }
 fn main() {
     let now = Instant::now();
-    let path = "./data/test";
+    let path = "./data/data";
     let full_data = get_list_from_file(path);
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
@@ -200,7 +201,7 @@ fn babbage(input: Vec<String>) -> i128 {
         solver.solve();
         if solver.tokens_used > 0 {
             acc += solver.tokens_used;
-        }
+        } 
     }
     acc
 }
