@@ -6,9 +6,11 @@ struct ClawMachine {
     a: Coords,
     b: Coords,
     target: Coords,
+    //iterations: i128,
 }
 impl ClawMachine {
-    fn solve(&self) -> i128 {
+    fn solve(&mut self) -> i128 {
+
         let target = self.target;
         let a = self.a;
         let b = self.b;
@@ -17,7 +19,10 @@ impl ClawMachine {
         let a_increment = lcm(a.0, b.0) / a.0;
         let mut a_presses: i128 = 0;
         let mut bx_mod_counter: i128 = 0;
-        let mut position: Coords = (a.0 * a_presses, a.1 * a_presses);
+        let mut position: Coords = (0, 0);
+
+        //Debug
+
 
         if target.1 % a.1 == 0 && a.0 * target.1 / a.1 == target.0 {
             return (target.1 / a.1) * 3;
@@ -33,17 +38,23 @@ impl ClawMachine {
             if bx_mod == first_mod {
                 bx_mod_counter += 1;
                 if bx_mod_counter == 3 {
+                    //self.iterations = a_presses;
                     return 0;
                 }
             }
             a_presses += 1;
             position = (a.0 * a_presses, a.1 * a_presses);
+            // position tuple holds y value at current amount of a presses
+            // we use this information to calculate amount of b-presses 
+            // needed later.
         }
+        
+        //self.iterations = a_presses;
         // Now that we have our X, we ned to get Y into line
         // first we have to find the value of Y at the moment to
         // reference later:
-        let mut b_presses = (target.0 - position.0) / b.0;
-        let first_y = (b.1 * b_presses) + position.1;
+        let mut b_presses = (target.0 - position.0) / b.0; 
+        let first_y = (b.1 * b_presses) + position.1;      
 
         // then we increment by one LCM derived step
         // update our position and calculate the delta between
@@ -63,6 +74,11 @@ impl ClawMachine {
         if delta_y_target % increment_y != 0 {
             return 0;
         }
+        println!("single a presses: {}", a_presses);
+        println!("Extended GCD a.0, b.0: {:?}", extended_gcd(a.0, b.0));
+        println!("Extended GCD a.0, t.0: {:?}", extended_gcd(a.0, target.0));
+        println!("Extended GCD b.0, t.0: {:?}", extended_gcd(target.0, b.0));
+        println!("");
 
         // To get the solution, we need to know how many a presses are needed
         // to reach our target Y, luckily this is quite simple:
@@ -70,6 +86,8 @@ impl ClawMachine {
         a_presses += a_increment * iter_to_go;
 
         // then update the position to figure out how many b presses are needed
+        // we could calculate b presses directly, but I think the added clarity
+        // outwheighs the cost of the extra step
         position = (a.0 * a_presses, a.1 * a_presses);
         b_presses = (target.0 - position.0) / b.0;
 
@@ -102,6 +120,7 @@ impl InputData {
                 a: machine_coords[0],
                 b: machine_coords[1],
                 target: machine_coords[2],
+                //iterations: 0,
             });
             match input_iter.next() {
                 Some(_thing) => continue,
@@ -138,11 +157,39 @@ fn babbage(input: String) -> i128 {
     let mut acc = 0;
     let input = InputData { input };
     let machines = input.get_machines();
-    for machine in machines {
+    //let mut iter_acc = 0;
+    for mut machine in machines {
         acc += machine.solve();
+        //iter_acc += machine.iterations;
     }
     acc
 }
+#[derive(Debug, Clone)]
+struct ExtendedGCD{
+    part_1: (i128, i128),
+    part_2: i128,
+    part_3: (i128, i128),
+}
+fn extended_gcd(a: i128, b: i128) -> ExtendedGCD {
+    let (mut old_r, mut r) = (a, b);
+    let (mut old_s, mut s) = (1, 0);
+    let (mut old_t, mut t) = (0, 1);
+    
+    while r != 0 {
+        let quotient = old_r / r;
+        (old_r, r) = (r, old_r - (quotient * r));
+        (old_s, s) = (s, old_s - (quotient * s));
+        (old_t, t) = (t, old_t - (quotient * t));
+    }
+
+    let output = ExtendedGCD{
+        part_1: (old_s, old_t),
+        part_2: old_r,
+        part_3: (t, s),
+    };
+    output
+}
+
 fn gcd(a: i128, b: i128) -> i128 {
     if b == 0 {
         return a;
