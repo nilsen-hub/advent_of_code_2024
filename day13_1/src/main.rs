@@ -1,234 +1,112 @@
-use std::{fs::read_to_string, time::Instant, usize};
+use std::{fs::read_to_string, time::Instant};
 type Coords = (i128, i128);
 
-#[derive(Debug, Clone,)]
+#[derive(Debug, Clone)]
 struct ClawMachine {
     a: Coords,
     b: Coords,
     target: Coords,
 }
 impl ClawMachine {
-    fn swap_x_y(&mut self){
-        self.a = (self.a.1, self.a.0);
-        self.b = (self.b.1, self.b.0);
-        self.target = (self.target.1, self.target.0);
-    }
-}
-#[derive(Debug, Clone)]
-struct Solver {
-    machine: ClawMachine,
-    tokens_used: i128,
-}
-
-impl Solver {
-    fn solve_old(&mut self){
-        let target = self.machine.target;
-        let a = self.machine.a;
-        let b = self.machine.b;
-        let mut itercount = 0;
-        for index in 0..100 {
-            itercount += 1;
-            let position: Coords = (a.0 * index, a.1 * index);
-            let bx_to_go = target.0 - position.0;
-            if bx_to_go % b.0 == 0 {
-                let b_presses = bx_to_go / b.0;
-                if (b.1 * b_presses) + position.1 == target.1 {
-                    self.tokens_used = (index * 3) + b_presses;
-                    break;
-                }
-            }
-        }
-        println!("itercount: {itercount}");
-    }
-    fn solve(&mut self){
-        let target = self.machine.target;
-        let a = self.machine.a;
-        let b = self.machine.b;
-
-        let lcm = lcm(a.0, b.0);
-        let a_increment = lcm/a.0;
+    fn solve(&self) -> i128 {
+        let target = self.target;
+        let a = self.a;
+        let b = self.b;
+        let mut a_presses: i128 = 0;
+        let a_increment = lcm(a.0, b.0) / a.0;
         let mut increment: i128 = 1;
 
-        let mut first_y: i128 = 0;
-        let mut index: i128 = 0;
-        let mut delta_checked = false;
-        let mut iter_to_go: i128 = 0;
-        let mut increment_y: i128 = 0;
-        let first_mod: i128 = target.0 % b.0;
-        let mut bx_mod_counter: i128 = 0;
-
-
         loop {
-            if index > 100{
-                break;
-            }
-            let position: Coords = (a.0 * index, a.1 * index);
+            let position: Coords = (a.0 * a_presses, a.1 * a_presses);
             let bx_to_go = target.0 - position.0;
-            let bx_mod = bx_to_go % b.0;
-            if bx_mod == first_mod{
-                bx_mod_counter += 1;
+            if a_presses > 100 {
+                return 0;
             }
-            if bx_mod_counter == 10 && delta_checked == false{
-                if target.1 % a.1 == 0 && a.0 * target.1 / a.1 == target.0{
-                    self.tokens_used = (target.1 / a.1) * 3;
-                    break;
-                } else {
-                    break;
-                }
-            }
-            if bx_mod == 0 {
+            if bx_to_go % b.0 == 0 {
                 increment = a_increment;
                 let b_presses = bx_to_go / b.0;
-                let current_y = (b.1 * b_presses) + position.1;
-                if  current_y == target.1 {
-                    self.tokens_used = (index * 3) + b_presses;
-                    break;
-                }
-                if first_y == 0{
-                    first_y = current_y;
-                    index += increment;
-                    continue;
-                }
-
-                if !delta_checked {
-                    delta_checked = true;
-                    increment_y = first_y.abs_diff(current_y) as i128;
-                    let delta_y = current_y.abs_diff(target.1) as i128;
-                    if delta_y % increment_y != 0{
-                        break;
-                    }
-                }
-                let delta_y = current_y.abs_diff(target.1) as i128;
-                iter_to_go = delta_y / increment_y;
-                let increment_multiplier = iter_to_go / 2;
-                if increment_multiplier > 0{
-                    index += increment * increment_multiplier;
-                    continue;
+                if (b.1 * b_presses) + position.1 == target.1 {
+                    return (a_presses * 3) + b_presses;
                 }
             }
-            index += increment;
+            a_presses += increment;
         }
-        
     }
 }
 #[derive(Debug, Clone)]
 struct InputData {
-    input: Vec<String>,
+    input: String,
 }
 impl InputData {
-    fn get_next(&mut self) -> Option<ClawMachine> {
-        let mut proto_claw: Vec<String> = Vec::with_capacity(3);
-        proto_claw.push(match self.input.pop() {
-            Some(prize) => prize,
-            None => return None,
-        });
-        proto_claw.push(self.input.pop().unwrap());
-        proto_claw.push(self.input.pop().unwrap());
-
-        if !self.input.is_empty() {
-            self.input.pop().unwrap();
-        }
-        let mut target = self.get_coords(&proto_claw[0]);
-        let output = ClawMachine {
-            a: self.get_coords(&proto_claw[2]),
-            b: self.get_coords(&proto_claw[1]),
-            target,
-        };
-
-        Some(output)
-    }
-    fn get_coords(&self, to_clean: &String) -> Coords {
-        let string_ch: Vec<char> = to_clean.chars().collect();
-        let mut x:i128  = 0;
-        let mut y:i128  = 0;
-        let mut switch: bool = true;
-        let mut skippy: usize = 0;
-        for (index, c) in string_ch.iter().enumerate() {
-            if skippy > index {
-                continue;
-            }
-            if c.is_numeric() {
-                let temp = self.get_int_from_char(&string_ch, &index);
-                if switch {
-                    x = temp.0;
-                    skippy = temp.1;
-                    switch = false;
-                    continue;
-                }
-                y = temp.0;
-                break;
-            }
-        }
-        return (x, y);
-    }
-    fn get_int_from_char(&self, chars: &Vec<char>, index: &usize) -> (i128, usize) {
-        // returns tuple: (int, end_index + 1)
-        let mut temp_number: Vec<char> = Vec::with_capacity(6);
-        let mut count = *index;
+    pub fn get_machines(&self) -> Vec<ClawMachine> {
+        let mut input_iter = self.input.lines();
+        let mut claw_machines = Vec::with_capacity(400);
+        let mut machine_coords: [Coords; 3] = [Coords::default(); 3];
         loop {
-            if count < chars.len() && chars[count].is_numeric() {
-                temp_number.push(chars[count]);
-                count += 1;
-                continue;
+            for index in 0..3 {
+                let part = match input_iter.next() {
+                    Some(part) => part,
+                    None => panic!("There should be data here"),
+                };
+                match index {
+                    0 | 1 => machine_coords[index] = self.get_button(part),
+                    _ => machine_coords[index] = self.get_target(part),
+                };
             }
-            break;
+            claw_machines.push(ClawMachine {
+                a: machine_coords[0],
+                b: machine_coords[1],
+                target: machine_coords[2],
+            });
+            match input_iter.next() {
+                Some(_thing) => continue,
+                None => break,
+            }
         }
-        let as_string: String = temp_number.iter().collect();
-        let number:i128  = as_string.parse().unwrap();
-
-        (number, 1 + count)
+        claw_machines
+    }
+    fn get_target(&self, target: &str) -> Coords {
+        let split: Vec<&str> = target.split('=').collect();
+        let x: i128 = split[1].strip_suffix(", Y").unwrap().parse().unwrap();
+        let y: i128 = split[2].parse().unwrap();
+        (x, y)
+    }
+    fn get_button(&self, button: &str) -> Coords {
+        let split: Vec<&str> = button.split('+').collect();
+        let x: i128 = split[1].strip_suffix(", Y").unwrap().parse().unwrap();
+        let y: i128 = split[2].parse().unwrap();
+        (x, y)
     }
 }
 fn main() {
     let now = Instant::now();
     let path = "./data/data";
-    let full_data = get_list_from_file(path);
+    let full_data = match read_to_string(path) {
+        Ok(data) => data,
+        Err(_) => panic!("There should be data here"),
+    };
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
     println!("program runtime: {}", now.elapsed().as_micros());
 }
-fn babbage(input: Vec<String>) -> i128 {
+fn babbage(input: String) -> i128 {
     let mut acc = 0;
-    let mut input = InputData { input };
-    loop {
-        let mut solver = Solver {
-            machine: match input.get_next() {
-                Some(machine) => machine,
-                None => break,
-            },
-            tokens_used: 0,
-        };
-        solver.solve();
-        if solver.tokens_used > 0 {
-            acc += solver.tokens_used;
-        } 
+    let input = InputData { input };
+    let machines = input.get_machines();
+    for machine in machines {
+        acc += machine.solve();
     }
     acc
 }
-fn gcd_more(numbers: &mut Vec<i128>) -> i128 {
-    // will panic if less than two elements in numbers
-    let mut gcd_more = gcd(numbers.pop().unwrap(), numbers.pop().unwrap());
-    for i in numbers{
-        gcd_more = gcd(gcd_more, *i);
-    }
-    gcd_more
-}
-fn gcd(a:i128, b:i128) -> i128 {
-    if b == 0{
-        return a
+fn gcd(a: i128, b: i128) -> i128 {
+    if b == 0 {
+        return a;
     } else {
-        return gcd(b,a % b)
+        return gcd(b, a % b);
     }
 }
-fn lcm(a:i128, b:i128) -> i128 {
-    return  a*(b/gcd(a,b));
-}
-fn get_list_from_file(path: &str) -> Vec<String> {
-    read_to_string(path)
-        .unwrap()
-        .lines()
-        .map(String::from)
-        .collect()
+fn lcm(a: i128, b: i128) -> i128 {
+    return a * (b / gcd(a, b));
 }
 
 #[cfg(test)]
