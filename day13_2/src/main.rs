@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, time::Instant};
+use std::{fs::read_to_string, time::Instant, usize};
 type Coords = (usize, usize);
 
 #[derive(Debug, Clone)]
@@ -8,7 +8,14 @@ struct ClawMachine {
     target: Coords,
 }
 impl ClawMachine {
-    fn solve(&mut self) -> usize {
+    fn find_bxmod(&self, a_presses:usize) -> usize{
+        let delta_x_target = self.target.0 - (self.a.0 * a_presses);
+        if  delta_x_target % self.b.0 == 0{
+            return a_presses;
+        }
+        return self.find_bxmod(a_presses + 1);
+    }
+    fn solve(&self) -> usize {
 
         let target = self.target;
         let a = self.a;
@@ -19,39 +26,28 @@ impl ClawMachine {
             return 0;
         }
 
-        let mut a_presses: usize = 0;
-        let mut position: Coords = (0, 0);
-        let mut x_to_go = usize::default();
-        
-        // this loop finds the first solution to X, defining an offset that
-        // allows us to use LCM to calculate the rest of the problem.
-        loop {
-            x_to_go = target.0 - position.0;
-            let bx_mod = x_to_go % b.0;
-            if bx_mod == 0 {
-                break;
-            }
-            a_presses += 1;
-            position.0 = a.0 * a_presses;
-        }
-        
-        // Update position to hold needed data for next steps
-        position.1 = a.1 * a_presses;
+        // First we get the how many a presses we need to make the 
+        // amount of b presses needed fit into mod delta target/x 
+        let mut a_presses = self.find_bxmod(0);
 
-        // Now that we have our X, we ned to get Y into line, we start
-        // by calculating how much Y increments pr. LCM derived increment
+        // Now that we have our X, we ned to get Y into line.
+        // Position determines state of Y-side
+        let mut position = (a.0 * a_presses, a.1 * a_presses);
+
+        
+        // Start by calculating how much Y moves pr. LCM derived increment
         let lcm = lcm(a.0, b.0);
         let a_increment = lcm / a.0;
         let b_increment = lcm / b.0;
         
-        let mut b_presses = x_to_go / b.0;
+        let mut b_presses = (target.0 - position.0) / b.0;
         let current_y = (b.1 * b_presses) + position.1;
         let increment_y = (a_increment*a.1).abs_diff(b_increment * b.1);
 
         // Now that we have the Y increment value, we can see if it fits neatly
-        // into the delta between the current y value and the target value.
-        // If it fails, we can discard the Claw Machine. If sucsess, we know
-        // the machine will solve
+        // into the delta between the current y value and the target y value.
+        // If it fails, we can discard the Claw Machine. If sucsess, we continue
+        // on to solve the machine.
         let delta_y_target = current_y.abs_diff(target.1);
         if delta_y_target % increment_y != 0 {
             return 0;
@@ -118,6 +114,7 @@ impl InputData {
     }
 }
 fn main() {
+    let now = Instant::now();
     let path = "./data/data";
     let full_data = match read_to_string(path) {
         Ok(data) => data,
@@ -125,16 +122,15 @@ fn main() {
     };
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
+    println!("program runtime: {}", now.elapsed().as_micros());
 }
 fn babbage(input: String) -> usize {
-    let now = Instant::now();
     let mut acc = 0;
     let input = InputData { input };
     let machines = input.get_machines();
-    for mut machine in machines {
+    for machine in machines {
         acc += machine.solve();
     }
-    println!("babbage runtime: {}", now.elapsed().as_micros());
     acc
 }
 fn gcd(a: usize, b: usize) -> usize {

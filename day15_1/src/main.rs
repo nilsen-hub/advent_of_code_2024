@@ -46,7 +46,7 @@ struct WareHouse {
 }
 impl WareHouse {
     fn get_next_tile(&self, direction: &char, current_tile: &Coords) -> Coords {
-        let (x, y) = current_tile.clone();
+        let (x, y) = *current_tile;
         return match *direction {
             '^' => (x, y - 1), // North
             'v' => (x, y + 1), // South
@@ -55,7 +55,7 @@ impl WareHouse {
             _ => panic!("not a valid character"),
         };
     }
-    fn check_move(
+    fn get_moves(
         &self,
         direction: &char,
         current_tile: &Coords,
@@ -67,7 +67,10 @@ impl WareHouse {
             '#' => return None,
             'O' => {
                 moves.push(next);
-                self.check_move(direction, &next, moves)
+                match self.check_move(direction, &next, moves){
+                    Some(moves) => return Some(moves), 
+                    None => return None, 
+                }
             }
             '.' => {
                 moves.push(next);
@@ -100,24 +103,24 @@ fn main() {
 fn babbage(input: InputData) -> isize {
     let mut acc = 0;
     let mut warehouse = input.parse();
-    for line in warehouse.floor.clone() {
-        for c in line {
-            print!("{}", c);
-        }
-        println!("");
-    }
-    print!("moves: ");
-    for mov in warehouse.robot.moves.clone() {
-        print!("{}", mov);
-    }
-    println!("");
+    //for line in warehouse.floor.clone() {
+    //    for c in line {
+    //        print!("{}", c);
+    //    }
+    //    println!("");
+    //}
+    // print!("moves: ");
+    // for mov in warehouse.robot.moves.clone() {
+    //     print!("{}", mov);
+    // }
+    // println!("");
     let current_tile = warehouse.robot.position;
     let direction = warehouse.robot.moves.pop_front().unwrap();
-    println!(
-        "current posistion: {:?} next tile: {:?}",
-        current_tile,
-        warehouse.get_next_tile(&direction, &current_tile)
-    );
+    //println!(
+    //    "current posistion: {:?} next tile: {:?}",
+    //    current_tile,
+    //    warehouse.get_next_tile(&direction, &current_tile)
+    //);
 
     acc
 }
