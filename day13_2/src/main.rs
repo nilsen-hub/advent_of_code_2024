@@ -14,18 +14,14 @@ impl ClawMachine {
         let target = self.target;
         let a = self.a;
         let b = self.b;
-        let first_mod: i128 = target.0 % b.0;
 
         let a_increment = lcm(a.0, b.0) / a.0;
         let mut a_presses: i128 = 0;
-        let mut bx_mod_counter: i128 = 0;
         let mut position: Coords = (0, 0);
 
-        //Debug
-
-
-        if target.1 % a.1 == 0 && a.0 * target.1 / a.1 == target.0 {
-            return (target.1 / a.1) * 3;
+        // this removes machines that will never reach bx_mod == 0 + some more
+        if target.0 % gcd(a.0, b.0) != 0 || target.1 % gcd(a.1, b.1) != 0{
+            return 0;
         }
         // this loop solves X
         loop {
@@ -35,20 +31,12 @@ impl ClawMachine {
             if bx_mod == 0 {
                 break;
             }
-            if bx_mod == first_mod {
-                bx_mod_counter += 1;
-                if bx_mod_counter == 3 {
-                    //self.iterations = a_presses;
-                    return 0;
-                }
-            }
             a_presses += 1;
             position = (a.0 * a_presses, a.1 * a_presses);
             // position tuple holds y value at current amount of a presses
             // we use this information to calculate amount of b-presses 
             // needed later.
         }
-        
         //self.iterations = a_presses;
         // Now that we have our X, we ned to get Y into line
         // first we have to find the value of Y at the moment to
@@ -72,13 +60,18 @@ impl ClawMachine {
         // the machine will solve
         let delta_y_target = current_y.abs_diff(target.1) as i128;
         if delta_y_target % increment_y != 0 {
+            //println!("Not good!");
+            //println!("");
             return 0;
         }
-        println!("single a presses: {}", a_presses);
-        println!("Extended GCD a.0, b.0: {:?}", extended_gcd(a.0, b.0));
-        println!("Extended GCD a.0, t.0: {:?}", extended_gcd(a.0, target.0));
-        println!("Extended GCD b.0, t.0: {:?}", extended_gcd(target.0, b.0));
-        println!("");
+        //println!("");
+        //println!("single a presses: {}", self.iterations);
+        //println!("a.0, b.0: {:?}", extended_gcd(a.0, b.0));
+        //println!("a.0, t.0: {:?}", extended_gcd(a.0, target.0));
+        //println!("b.0, t.0: {:?}", extended_gcd(b.0, target.0));
+        //println!("");
+        
+
 
         // To get the solution, we need to know how many a presses are needed
         // to reach our target Y, luckily this is quite simple:
@@ -90,7 +83,8 @@ impl ClawMachine {
         // outwheighs the cost of the extra step
         position = (a.0 * a_presses, a.1 * a_presses);
         b_presses = (target.0 - position.0) / b.0;
-
+        //println!("Good!");
+        //println!("");
         // then we return
         return (a_presses * 3) + b_presses;
     }
@@ -158,10 +152,15 @@ fn babbage(input: String) -> i128 {
     let input = InputData { input };
     let machines = input.get_machines();
     //let mut iter_acc = 0;
+    //let mut greatest_iter = 0;
     for mut machine in machines {
         acc += machine.solve();
         //iter_acc += machine.iterations;
+        //if machine.iterations > greatest_iter{
+        //    greatest_iter = machine.iterations;
+        //}
     }
+    //println!("total iterations: {} greatest amount needed: {}", iter_acc, greatest_iter);
     acc
 }
 #[derive(Debug, Clone)]
