@@ -8,12 +8,12 @@ struct ClawMachine {
     target: Coords,
 }
 impl ClawMachine {
-    fn find_bxmod(&self, a_presses:usize) -> usize{
+    fn find_bxmod_zero(&self, a_presses:usize) -> usize{
         let delta_x_target = self.target.0 - (self.a.0 * a_presses);
         if  delta_x_target % self.b.0 == 0{
             return a_presses;
         }
-        return self.find_bxmod(a_presses + 1);
+        return self.find_bxmod_zero(a_presses + 1);
     }
     fn solve(&self) -> usize {
 
@@ -26,14 +26,13 @@ impl ClawMachine {
             return 0;
         }
 
-        // First we get the how many a presses we need to make the 
-        // amount of b presses needed fit into mod delta target/x 
-        let mut a_presses = self.find_bxmod(0);
+        // First we figure out how many a presses we need to make the 
+        // amount of b presses needed fit into mod delta target/x = 0
+        let mut a_presses = self.find_bxmod_zero(0);
 
         // Now that we have our X, we ned to get Y into line.
-        // Position determines state of Y-side
+        // Position holds state of Y-side
         let mut position = (a.0 * a_presses, a.1 * a_presses);
-
         
         // Start by calculating how much Y moves pr. LCM derived increment
         let lcm = lcm(a.0, b.0);
@@ -44,10 +43,9 @@ impl ClawMachine {
         let current_y = (b.1 * b_presses) + position.1;
         let increment_y = (a_increment*a.1).abs_diff(b_increment * b.1);
 
-        // Now that we have the Y increment value, we can see if it fits neatly
+        // Now that we have the Y increment value, we can test if it fits neatly
         // into the delta between the current y value and the target y value.
-        // If it fails, we can discard the Claw Machine. If sucsess, we continue
-        // on to solve the machine.
+        // If it fails, we can discard the Claw Machine.
         let delta_y_target = current_y.abs_diff(target.1);
         if delta_y_target % increment_y != 0 {
             return 0;
@@ -62,7 +60,6 @@ impl ClawMachine {
         // outwheighs the cost of the extra step
         position.0 = a.0 * a_presses;
         b_presses = (target.0 - position.0) / b.0;
-        
         // then we return the answer
         return (a_presses * 3) + b_presses;
     }

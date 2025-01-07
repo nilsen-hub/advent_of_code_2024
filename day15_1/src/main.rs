@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, fs::read_to_string, time::Instant};
 type Floor = Vec<Vec<char>>;
-type Coords = (usize, usize);
+type Coords = (usize, usize); // coords are (X,Y)
 #[derive(Debug, Clone)]
 struct InputData {
     input: String,
@@ -21,7 +21,7 @@ impl InputData {
                 break;
             }
         }
-        let moves = match iter.next() {
+        let move_list = match iter.next() {
             Some(moves) => moves.chars().collect(),
             None => panic!("There should be some moves here"),
         };
@@ -33,7 +33,7 @@ impl InputData {
                 }
             }
         }
-        let robot = Robot { position, moves };
+        let robot = Robot { position, move_list };
         let output = WareHouse { floor, robot };
 
         output
@@ -45,6 +45,28 @@ struct WareHouse {
     robot: Robot,
 }
 impl WareHouse {
+    fn sum_gps(&self) -> usize{
+        let mut sum = 0;
+        for (idy, line) in self.floor.iter().enumerate(){
+            for (idx, tile) in line.iter().enumerate(){
+                if *tile == 'O'{
+                    sum += (idy*100) + idx;
+                }
+            }
+        }
+        sum
+    }
+    fn do_the_robot(&mut self){
+        for direction in self.robot.move_list.clone(){
+            let current_tile = self.robot.position;
+            match self.get_moves(&direction, &current_tile, Vec::new()) {
+                Some(mut moves) => {
+                    self.process_moves(&mut moves);
+                }
+                None => continue,
+            }
+        }
+    }
     fn get_next_tile(&self, direction: &char, current_tile: &Coords) -> Coords {
         let (x, y) = *current_tile;
         return match *direction {
@@ -67,7 +89,7 @@ impl WareHouse {
             '#' => return None,
             'O' => {
                 moves.push(next);
-                match self.check_move(direction, &next, moves){
+                match self.get_moves(direction, &next, moves){
                     Some(moves) => return Some(moves), 
                     None => return None, 
                 }
@@ -79,17 +101,43 @@ impl WareHouse {
             _ => panic!("Thats nowhere to be found in this room"),
         }
     }
-    fn make_move(&mut self, moves: Vec<Coords>) {}
+    fn process_moves(&mut self, moves: &mut Vec<Coords>) {
+        loop {
+            let to = moves.pop().unwrap();
+            match moves.last(){
+                Some(from) => self.make_move(to, *from),
+                None => {self.make_move(to, self.robot.position);
+                self.robot.position = to;
+                break;}
+            };
+        }   
+    } 
+    fn make_move(&mut self, to:Coords, from:Coords){
+        let mut floor = self.floor.clone();
+        let to_value = floor[to.1][to.0].clone();
+        floor[to.1][to.0] = floor[from.1][from.0];
+        floor[from.1][from.0] = to_value;
+        self.floor = floor;
+    }
+    fn print_floor(&self){
+        for line in &self.floor{
+            for tile in line{
+                print!("{}", tile);
+            }
+            println!("");
+        }
+    }
+    
 }
 #[derive(Debug, Clone, Default)]
 struct Robot {
     position: Coords,
-    moves: VecDeque<char>,
+    move_list: VecDeque<char>,
 }
 fn main() {
     let now = Instant::now();
     //let path = "./data/data";
-    let path = "./data/test_s";
+    let path = "./data/data";
     let input = InputData {
         input: match read_to_string(path) {
             Ok(file) => file,
@@ -100,29 +148,10 @@ fn main() {
     println!("The answer is: {}", answer);
     println!("program runtime: {}", now.elapsed().as_micros());
 }
-fn babbage(input: InputData) -> isize {
-    let mut acc = 0;
+fn babbage(input: InputData) -> usize {
     let mut warehouse = input.parse();
-    //for line in warehouse.floor.clone() {
-    //    for c in line {
-    //        print!("{}", c);
-    //    }
-    //    println!("");
-    //}
-    // print!("moves: ");
-    // for mov in warehouse.robot.moves.clone() {
-    //     print!("{}", mov);
-    // }
-    // println!("");
-    let current_tile = warehouse.robot.position;
-    let direction = warehouse.robot.moves.pop_front().unwrap();
-    //println!(
-    //    "current posistion: {:?} next tile: {:?}",
-    //    current_tile,
-    //    warehouse.get_next_tile(&direction, &current_tile)
-    //);
-
-    acc
+    warehouse.do_the_robot();
+    return warehouse.sum_gps();
 }
 
 #[cfg(test)]
@@ -130,5 +159,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn passes_example() {}
+    fn moves_are_parsed() {
+        let to_match: Vec<char> = vec!['<','^','^','>',];
+        let path = "./data/test_parse";
+        let input = InputData {
+            input: match read_to_string(path) {
+                Ok(file) => file,
+                Err(_) => panic!("File should be here"),
+            },
+        };
+        let moves = input.parse().robot.move_list;
+        assert_eq!(moves, to_match)
+    }
+    #[test]
+    fn next_tile_is_correct(){
+        let to_match = (1,2);
+        let path = "./data/test_s";
+        let mut input = InputData {
+            input: match read_to_string(path) {
+                Ok(file) => file,
+                Err(_) => panic!("File should be here"),
+            },
+        };
+        let direction = input.parse().robot.move_list.pop_front().unwrap();
+        let current_tile = &input.parse().robot.position;
+        let next_tile = input.parse().get_next_tile(&direction, &current_tile);
+        assert_eq!(next_tile, to_match)
+    }
+
 }
