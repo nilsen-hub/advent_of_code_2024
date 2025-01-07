@@ -75,15 +75,22 @@ impl WareHouse {
         sum
     }
     fn do_the_robot(&mut self){
+        println!("Starting setup");
         for direction in self.robot.move_list.clone(){
             let current_tile = self.robot.position;
+            self.print_floor();
+            println!("");
+            println!("direction: {}", direction);
             match direction{
-                '^'| 'v' => match self.get_vertical_moves(&direction, &current_tile, Vec::new(), VecDeque::new()) {
-                    Some(mut moves) => {
+                '^'| 'v' => {
+                    match self.get_vertical_moves(&direction, &current_tile, Vec::new(), VecDeque::new()) {
+                    Some(moves) => {
+                        println!("moves to process: {:?}", moves);
                         self.process_vertical_moves(&direction, moves);
                     }
                     None => continue,
-                }
+                };
+            }
                 '>'| '<' => match self.get_horizontal_moves(&direction, &current_tile, Vec::new()) {
                     Some(mut moves) => {
                         self.process_horizontal_moves(&mut moves);
@@ -133,22 +140,24 @@ impl WareHouse {
         let mut to_check = to_check;
         let mut checked = checked;
         let next = self.get_next_tile(direction, current_tile);
+        println!("next_tile: {}", self.floor[next.1][next.0]);
         match self.floor[next.1][next.0]{
-            '#' => return None,
-            '[' => {to_check.push((next.0 + 1, next.1));
-                checked.push_back(next);
-                return self.get_vertical_moves(direction, &next, to_check, checked);
-                }
-            ']' => {to_check.push((next.0 - 1, next.1));
-                checked.push_back(next);
-                return self.get_vertical_moves(direction, &next, to_check, checked);   
-                }
-            '.' => {checked.push_back(next);
+            '.' => {//checked.push_back(next);
                 match to_check.pop() {
                 Some(tile) => return self.get_vertical_moves(direction, &tile, to_check, checked),
                 None => return Some(checked),
                 }
             }
+            '#' => return None,
+            '[' => {to_check.push((current_tile.0 + 1, current_tile.1));
+                checked.push_back(*current_tile);
+                return self.get_vertical_moves(direction, &next, to_check, checked);
+                }
+            ']' => {to_check.push((current_tile.0 + 1, current_tile.1));
+                checked.push_back(*current_tile);
+                return self.get_vertical_moves(direction, &next, to_check, checked);   
+                }
+            
             _ => panic!("check frontier has messed up"), 
         }
     }
@@ -159,12 +168,12 @@ impl WareHouse {
         to_move.make_contiguous().sort_by_key(|tuple|tuple.1);
         loop {
             match direction{
-                'v' => {from = match to_move.pop_front() {
+                '^' => {from = match to_move.pop_front() {
                     Some(tile) => tile,
                     None => break,
                     }
                 },
-                '^' => {from = match to_move.pop_back() {
+                'v' => {from = match to_move.pop_back() {
                     Some(tile) => tile,
                     None => break,
                     }
@@ -199,12 +208,17 @@ impl WareHouse {
         self.floor = floor;
     }
     fn print_floor(&self){
-        for line in &self.floor{
-            for tile in line{
+        let mut found_position = (0,0);
+        for (idy, line) in self.floor.iter().enumerate(){
+            for (idx, tile) in line.iter().enumerate(){
+                if *tile == '@'{
+                    found_position = (idx, idy);
+                }
                 print!("{}", tile);
             }
             println!("");
         }
+        println!("robot metadata:{:?} Actual robot{:?}", self.robot.position, found_position);
     }
     
 }
