@@ -135,8 +135,6 @@ struct Robot {
     move_list: VecDeque<char>,
 }
 fn main() {
-    let now = Instant::now();
-    //let path = "./data/data";
     let path = "./data/data";
     let input = InputData {
         input: match read_to_string(path) {
@@ -146,11 +144,12 @@ fn main() {
     };
     let answer = babbage(input);
     println!("The answer is: {}", answer);
-    println!("program runtime: {}", now.elapsed().as_micros());
 }
 fn babbage(input: InputData) -> usize {
+    let now = Instant::now();
     let mut warehouse = input.parse();
     warehouse.do_the_robot();
+    println!("program runtime: {}", now.elapsed().as_micros());
     return warehouse.sum_gps();
 }
 

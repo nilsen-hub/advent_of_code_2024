@@ -1,4 +1,4 @@
-use std::{collections::{VecDeque}, fs::read_to_string, time::Instant};
+use std::{collections::VecDeque, fs::read_to_string, time::Instant};
 type Floor = Vec<Vec<char>>;
 type Coords = (usize, usize); // coords are (X,Y)
 #[derive(Debug, Clone)]
@@ -68,25 +68,20 @@ impl WareHouse {
         for (idy, line) in self.floor.iter().enumerate(){
             for (idx, tile) in line.iter().enumerate(){
                 if *tile == '['{
-                    sum += idy + idx * 5;
+                    sum += (idy*100) + idx; 
                 }
             }
         }
         sum
     }
     fn do_the_robot(&mut self){
-        println!("Starting setup");
         for direction in self.robot.move_list.clone(){
             let current_tile = self.robot.position;
-            self.print_floor();
-            println!("");
-            println!("direction: {}", direction);
             match direction{
                 '^'| 'v' => {
-                    match self.get_vertical_moves(&direction, &current_tile, Vec::new(), VecDeque::new()) {
-                    Some(moves) => {
-                        println!("moves to process: {:?}", moves);
-                        self.process_vertical_moves(&direction, moves);
+                    match self.get_vertical_moves(&direction, &current_tile, VecDeque::new(), VecDeque::new()) {
+                    Some(mut moves) => {
+                        self.process_vertical_moves(&mut moves, &direction);
                     }
                     None => continue,
                 };
@@ -136,58 +131,86 @@ impl WareHouse {
             _ => panic!("Thats nowhere to be found in this room"),
         }
     }
-    fn get_vertical_moves(&self, direction: &char, current_tile: &Coords, to_check: Vec<Coords>, checked:VecDeque<Coords>) -> Option<VecDeque<Coords>> {
+    fn get_vertical_moves(&self, 
+        direction: &char, 
+        current_tile: &Coords, 
+        moves: VecDeque<Coords>,
+        to_check: VecDeque<Coords>,
+    ) -> Option<VecDeque<Coords>> {
+        let mut moves = moves;
         let mut to_check = to_check;
-        let mut checked = checked;
-        let next = self.get_next_tile(direction, current_tile);
-        println!("next_tile: {}", self.floor[next.1][next.0]);
-        match self.floor[next.1][next.0]{
-            '.' => {//checked.push_back(next);
-                match to_check.pop() {
-                Some(tile) => return self.get_vertical_moves(direction, &tile, to_check, checked),
-                None => return Some(checked),
+        let next = self.get_next_tile(&direction, &current_tile);
+        match self.floor[next.1][next.0] {
+            '#' => return None,
+            '[' => {
+                moves.push_back(next);
+                to_check.push_back((next.0 + 1, next.1));
+                match self.get_vertical_moves(&direction, &next, moves, to_check) {
+                    Some(moves) => return Some(moves),
+                    None => return None,
                 }
             }
-            '#' => return None,
-            '[' => {to_check.push((current_tile.0 + 1, current_tile.1));
-                checked.push_back(*current_tile);
-                return self.get_vertical_moves(direction, &next, to_check, checked);
+            ']' => {
+                moves.push_back(next);
+                to_check.push_back((next.0 - 1, next.1));
+                match self.get_vertical_moves(&direction, &next, moves, to_check) {
+                    Some(moves) => return Some(moves),
+                    None => return None,
                 }
-            ']' => {to_check.push((current_tile.0 + 1, current_tile.1));
-                checked.push_back(*current_tile);
-                return self.get_vertical_moves(direction, &next, to_check, checked);   
+            }
+            '.' => {
+                match to_check.pop_front() {
+                    Some(next) => {
+                        moves.push_back(next);
+                        match self.get_vertical_moves(&direction, &next, moves, to_check) {
+                        Some(moves) => return Some(moves),
+                        None => return None,
+                    };
                 }
-            
-            _ => panic!("check frontier has messed up"), 
+                    None => return Some(moves)};
+            }
+            _ => panic!("get vertical moves really shit the bed.. next tile is: {}",self.floor[next.1][next.0] ),
         }
     }
-    fn process_vertical_moves(&mut self, direction: &char, to_move:VecDeque<Coords>){
-        let floor = self.floor.clone();
-        let mut from = (0,0);
-        let mut to_move = to_move;
-        to_move.make_contiguous().sort_by_key(|tuple|tuple.1);
-        loop {
+    fn process_vertical_moves(&mut self, moves: &VecDeque<Coords>, direction: &char) {
+        let mut moves: Vec<(usize, usize)> = moves.clone().into_iter().collect();
+        moves.sort();
+        moves.dedup();
+        moves.sort_by_key(|y| y.1);
+        let mut moves: VecDeque<Coords> = moves.into_iter().collect();
+        loop{
             match direction{
-                '^' => {from = match to_move.pop_front() {
-                    Some(tile) => tile,
-                    None => break,
+                '^' => {match moves.pop_front() {
+                    Some(from) => {
+                        let to = (from.0, from.1 - 1);
+                        self.make_move(to, from);
+                    },
+                    None => {
+                        let from = self.robot.position;
+                        let to = (from.0, from.1 - 1);
+                        self.make_move(to, from);
+                        self.robot.position = to;
+                        break;
+                        },
                     }
-                },
-                'v' => {from = match to_move.pop_back() {
-                    Some(tile) => tile,
-                    None => break,
                     }
-                },
-                _ => panic!("process vertical moves messed up"),
-            }
-            let to = self.get_next_tile(direction, &from);
-            self.make_move(to, from);
+                'v' => {match moves.pop_back() {
+                    Some(from) => {
+                        let to = (from.0, from.1 + 1);
+                        self.make_move(to, from);
+                    },
+                    None => {
+                        let from = self.robot.position;
+                        let to = (from.0, from.1  +1);
+                        self.make_move(to, from);
+                        self.robot.position = to;
+                        break;
+                        },
+                    }
+                    },
+                _ => panic!("process vertical moves made a fool of itself.."),        
+            };
         }
-        from = self.robot.position;
-        let to = self.get_next_tile(direction, &from);
-        self.make_move(to, from);
-        self.robot.position = to;
-
     }
     fn process_horizontal_moves(&mut self, moves: &mut Vec<Coords>) {
         loop {
@@ -201,36 +224,20 @@ impl WareHouse {
         }   
     } 
     fn make_move(&mut self, to:Coords, from:Coords){
-        let mut floor = self.floor.clone();
-        let to_value = floor[to.1][to.0].clone();
-        floor[to.1][to.0] = floor[from.1][from.0];
-        floor[from.1][from.0] = to_value;
-        self.floor = floor;
-    }
-    fn print_floor(&self){
-        let mut found_position = (0,0);
-        for (idy, line) in self.floor.iter().enumerate(){
-            for (idx, tile) in line.iter().enumerate(){
-                if *tile == '@'{
-                    found_position = (idx, idy);
-                }
-                print!("{}", tile);
-            }
-            println!("");
-        }
-        println!("robot metadata:{:?} Actual robot{:?}", self.robot.position, found_position);
+        let to_value = self.floor[to.1][to.0];
+        self.floor[to.1][to.0] = self.floor[from.1][from.0];
+        self.floor[from.1][from.0] = to_value;
     }
     
 }
+
 #[derive(Debug, Clone, Default)]
 struct Robot {
     position: Coords,
     move_list: VecDeque<char>,
 }
 fn main() {
-    let now = Instant::now();
-    //let path = "./data/data";
-    let path = "./data/test_s";
+    let path = "./data/data";
     let input = InputData {
         input: match read_to_string(path) {
             Ok(file) => file,
@@ -239,14 +246,13 @@ fn main() {
     };
     let answer = babbage(input);
     println!("The answer is: {}", answer);
-    println!("program runtime: {}", now.elapsed().as_micros());
 }
 fn babbage(input: InputData) -> usize {
+    let now = Instant::now();
     let mut warehouse = input.parse();
     warehouse.do_the_robot();
-    warehouse.print_floor();
+    println!("babbage runtime: {}", now.elapsed().as_micros());
     return warehouse.sum_gps();
-    
 }
 
 #[cfg(test)]
