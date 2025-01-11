@@ -29,7 +29,7 @@ impl ClawMachine {
         // First we figure out how many a presses we need to make the 
         // amount of b presses needed fit into mod delta target/x = 0
         let mut a_presses = self.find_bxmod_zero(0);
-
+        println!("a presses to get bxmod = 0: {}", a_presses);
         // Now that we have our X, we ned to get Y into line.
         // Position holds state of Y-side
         let mut position = (a.0 * a_presses, a.1 * a_presses);
@@ -111,23 +111,25 @@ impl InputData {
     }
 }
 fn main() {
-    let now = Instant::now();
-    let path = "./data/data";
+    
+    let path = "./data/solveable";
     let full_data = match read_to_string(path) {
         Ok(data) => data,
         Err(_) => panic!("There should be data here"),
     };
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
-    println!("program runtime: {}", now.elapsed().as_micros());
+    
 }
 fn babbage(input: String) -> usize {
+    let now = Instant::now();
     let mut acc = 0;
     let input = InputData { input };
     let machines = input.get_machines();
     for machine in machines {
         acc += machine.solve();
     }
+    println!("babbage runtime: {}", now.elapsed().as_micros());
     acc
 }
 fn gcd(a: usize, b: usize) -> usize {
