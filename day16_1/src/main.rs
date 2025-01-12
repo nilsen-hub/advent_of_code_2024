@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs::read_to_string, time::Instant};
+use std::{collections::{HashMap, HashSet}, fs::read_to_string, time::Instant};
 
 type Field = Vec<Vec<char>>;
 
@@ -9,10 +9,10 @@ enum Direction{
     East,
     West,
 }
-#[derive(Debug, Clone, Copy,)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 struct Coords{
-    a: isize, 
-    b: isize,
+    x: isize, 
+    y: isize,
 }
 
 impl std::ops::Add<(isize, isize)> for Coords {
@@ -20,8 +20,8 @@ impl std::ops::Add<(isize, isize)> for Coords {
 
   fn add(self, rhs: (isize, isize)) -> Self::Output {
     Self::Output {
-        a: self.a + rhs.0,
-        b: self.b + rhs.1,
+        x: self.x + rhs.0,
+        y: self.y + rhs.1,
     }    
   }
 }
@@ -30,30 +30,42 @@ impl std::ops::Add<Coords> for Coords {
   
     fn add(self, rhs: Coords) -> Self::Output {
       Self::Output {
-          a: self.a + rhs.a,
-          b: self.b + rhs.b,
+          x: self.x + rhs.y,
+          y: self.x + rhs.y,
       }    
     }
-  }
+}
 impl Coords{
     const NORTH: Coords = Coords{
-        a:0,
-        b:-1,
+        x:0,
+        y:-1,
     };
 
-    const WEST: (isize, isize) = (-1, 0);
-    // fn add(&self, other: Coords) -> Coords{
-    //     return Coords{
-    //         a: self.a + other.a, 
-    //         b: self.b + other.b,
-    //     }
-    // }
+    const SOUTH: Coords = Coords{
+        x:0,
+        y:1,
+    };
+    const EAST: Coords = Coords{
+        x:1,
+        y:0,
+    };
+    const WEST: Coords = Coords{
+        x:-1,
+        y:0,
+    };
+
     fn from(t0:isize, t1:isize) -> Coords{
         return Coords{
-            a: t0,
-            b: t1,
+            x: t0,
+            y: t1,
         };
+
     }
+}
+#[derive(Debug, Clone, Copy)]
+struct Node{
+    coords: Coords,
+    distance: usize,
 }
 #[derive(Debug, Clone)]
 struct InputData {
@@ -77,13 +89,14 @@ impl InputData {
         
         for (idx, c) in field[1].iter().enumerate(){
             if *c == 'S'{
-                end = Coords::from(idx, 1);
+                end = Coords::from(idx as isize, 1);
             }
         }
         let start = Coords::from(end.b, end.a);
         return Solver{
             maze: Maze{
                 field,
+                field_graph: HashMap::new(),
                 start,
                 end
             },
@@ -99,8 +112,59 @@ impl InputData {
 #[derive(Debug, Clone)]
 struct Maze{
     field: Field,
+    field_graph: HashMap<Coords,Vec<Node>>,
     start: Coords,
     end: Coords,
+}
+impl Maze{
+    fn make_graph(&mut self){
+        let mut position = self.start;
+        let mut visited:HashSet<Coords> = HashSet::with_capacity(500);
+        let start = self.get_connected_nodes(position, visited);
+
+        self.field_graph.insert(position, start.0);
+
+    }
+    fn get_connected_nodes(&self, start_pos:Coords, visited:HashSet<Coords>) -> (Vec<Node>, HashSet<Coords>){
+        let mut current_pos = start_pos;
+        let mut visited = visited;
+        let directions = [
+            Coords::NORTH, 
+            Coords::SOUTH, 
+            Coords::EAST, 
+            Coords::WEST,
+            ];
+        
+        let mut nodes: Vec<Node> = Vec::with_capacity(5);
+        for direction in directions.iter(){
+            let mut steps = 0;
+            'outer: loop{
+                visited.insert(current_pos);
+                current_pos = current_pos + *direction;
+                if self.field[current_pos.y as usize][current_pos.x as usize] == '#'{
+                    break;
+                }
+                steps += 1;
+                for next in directions{
+                    let check = current_pos + next;
+                    
+                    if visited.contains(&check) || next == *direction{
+                        continue;
+                    }
+                    if self.field[check.y as usize][check.x as usize] == '.'{
+                        let node = Node{
+                            coords: current_pos,
+                            distance: steps,   
+                        };
+                        nodes.push(node);
+                        break 'outer;
+                    } 
+                }
+            }
+
+        }
+        return (nodes, visited);
+    }
 }
 #[derive(Debug, Clone)]
 struct Rudolph{
@@ -124,15 +188,15 @@ impl Solver{
     fn rudolph_move_to_next_junction(&mut self){
 
     }
-    fn find_next_junction(&self, mut pos:Coords) -> Option<Coords>{
-        
-        match self.rudolph.direction{
-            North=>,
-            South=>,
-            East=>,
-            West=>,
-        }
-    }
+    //fn find_next_junction(&self, mut pos:Coords) -> Option<Coords>{
+    //    
+    //    match self.rudolph.direction{
+    //        North=>,
+    //        South=>,
+    //        East=>,
+    //        West=>,
+    //    }
+    //}
 }
 fn main() {
     let path = "./data/test_1";
@@ -147,7 +211,7 @@ fn main() {
 fn babbage(input: InputData){
     let now = Instant::now();
     let mut solver = input.parse();
-    println!("Add tuple experiment: {:?}", tup_add);
+    //println!("Add tuple experiment: {:?}", tup_add);
     println!("The answer is: {}", solver.solve());
     println!("babbage runtime: {}", now.elapsed().as_micros());
 }
