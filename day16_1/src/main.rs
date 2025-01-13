@@ -1,8 +1,8 @@
-use std::{collections::{HashMap, HashSet}, fs::read_to_string, time::Instant};
+use std::{collections::{HashMap, HashSet, VecDeque}, fs::read_to_string, time::Instant};
 
 type Field = Vec<Vec<char>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Direction{
     North,
     South,
@@ -25,13 +25,33 @@ impl std::ops::Add<(isize, isize)> for Coords {
     }    
   }
 }
+impl std::ops::Sub<(isize, isize)> for Coords {
+    type Output = Coords;
+  
+    fn sub(self, rhs: (isize, isize)) -> Self::Output {
+      Self::Output {
+          x: self.x - rhs.0,
+          y: self.y - rhs.1,
+      }    
+    }
+  }
 impl std::ops::Add<Coords> for Coords {
     type Output = Coords;
   
     fn add(self, rhs: Coords) -> Self::Output {
       Self::Output {
-          x: self.x + rhs.y,
-          y: self.x + rhs.y,
+          x: self.x + rhs.x,
+          y: self.y + rhs.y,
+      }    
+    }
+}
+impl std::ops::Sub<Coords> for Coords {
+    type Output = Coords;
+  
+    fn sub(self, rhs: Coords) -> Self::Output {
+      Self::Output {
+          x: self.x - rhs.x,
+          y: self.y - rhs.y,
       }    
     }
 }
@@ -78,21 +98,14 @@ impl InputData {
         for line in lines{
             field.push(line.chars().collect());
         }
-        for line in &field{
-            for c in line{
-                print!("{c}");
-            }
-            println!("");
-        }
-        println!("");
         let mut end = Coords::from(0,0);
         
         for (idx, c) in field[1].iter().enumerate(){
-            if *c == 'S'{
+            if *c == 'E'{
                 end = Coords::from(idx as isize, 1);
             }
         }
-        let start = Coords::from(end.b, end.a);
+        let start = Coords::from(end.y, end.x);
         return Solver{
             maze: Maze{
                 field,
@@ -103,8 +116,8 @@ impl InputData {
             rudolph: Rudolph {
                 position: start,
                 direction: Direction::East,
-                seen_positions: HashSet::with_capacity(500),
                 points: 0,
+                path: HashSet::new(),
             },
         };
     }
@@ -118,16 +131,62 @@ struct Maze{
 }
 impl Maze{
     fn make_graph(&mut self){
-        let mut position = self.start;
-        let mut visited:HashSet<Coords> = HashSet::with_capacity(500);
-        let start = self.get_connected_nodes(position, visited);
-
-        self.field_graph.insert(position, start.0);
+        let position = self.start;
+        
+        let to_explore = self.get_connected_nodes(position);
+        self.field_graph.insert(position, to_explore.clone());
+        
+        self.node_crawler(to_explore);
+        println!("graph contains {} nodes", self.field_graph.len());
+        self.graph_printer();
+    }
+    fn graph_printer(&self){
+        let mut field_copy = self.field.clone();
+        for (key, _nodes) in &self.field_graph{
+            field_copy[key.y as usize][key.x as usize] = '+';
+        }
+        for line in &field_copy{
+            for c in line{
+                print!("{c}");
+            }
+            println!("");
+        }
+    }
+    fn node_crawler(&mut self, mut to_explore: Vec<Node>){
+        loop{
+            let node = match to_explore.pop() {
+                Some(node) => node,
+                None => return,
+            };
+            if self.field_graph.contains_key(&node.coords){
+                continue;
+            }
+            let mut nodes = self.get_connected_nodes(node.coords);
+            self.field_graph.insert(node.coords, nodes.clone());
+            to_explore.append(&mut nodes);
+        }
 
     }
-    fn get_connected_nodes(&self, start_pos:Coords, visited:HashSet<Coords>) -> (Vec<Node>, HashSet<Coords>){
-        let mut current_pos = start_pos;
-        let mut visited = visited;
+    fn deprec_node_crawler(&mut self, mut to_explore: Vec<Node>){
+        // recursive function, must be bootstrapped with one valid node vector
+        let node = match to_explore.pop() {
+            Some(node) => node,
+            None => return,
+        };
+
+        if self.field_graph.contains_key(&node.coords){
+            return self.node_crawler(to_explore);
+        }
+
+        let mut nodes = self.get_connected_nodes(node.coords);
+        self.field_graph.insert(node.coords, nodes.clone());
+        to_explore.append(&mut nodes);
+
+        return self.node_crawler(to_explore);
+    }
+    fn get_connected_nodes(&self, start_pos:Coords,) -> Vec<Node>{
+        let mut visited:HashSet<Coords> = HashSet::new();
+        visited.insert(start_pos);
         let directions = [
             Coords::NORTH, 
             Coords::SOUTH, 
@@ -136,19 +195,19 @@ impl Maze{
             ];
         
         let mut nodes: Vec<Node> = Vec::with_capacity(5);
-        for direction in directions.iter(){
+        for direction in directions{
+            let mut current_pos = start_pos;
             let mut steps = 0;
             'outer: loop{
-                visited.insert(current_pos);
-                current_pos = current_pos + *direction;
+                current_pos = current_pos + direction;
                 if self.field[current_pos.y as usize][current_pos.x as usize] == '#'{
                     break;
                 }
+                visited.insert(current_pos);
                 steps += 1;
                 for next in directions{
                     let check = current_pos + next;
-                    
-                    if visited.contains(&check) || next == *direction{
+                    if visited.contains(&check) || next == direction{
                         continue;
                     }
                     if self.field[check.y as usize][check.x as usize] == '.'{
@@ -163,15 +222,15 @@ impl Maze{
             }
 
         }
-        return (nodes, visited);
+        return nodes;
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,)]
 struct Rudolph{
     position: Coords,
-    seen_positions: HashSet<Coords>,
     direction: Direction,
     points: usize,
+    path: HashSet<Coords>,
 }
 #[derive(Debug, Clone)]
 struct Solver{
@@ -180,23 +239,108 @@ struct Solver{
 }
 impl Solver{
     fn solve(&mut self,) -> usize {
+        self.maze.make_graph();
+        let mut rudolph_collection: VecDeque<Rudolph> = VecDeque::from([self.rudolph.clone()]);
+        let mut counter: usize = 0;
+        let mut visited: HashSet<Coords> = HashSet::new();
+        loop{
+            counter += 1;
+            //if counter % 1000 == 0{
+                println!("{} iterations counted, there are currently {} rudolphs running around", counter, rudolph_collection.len());
+                rudolph_collection.make_contiguous().sort_by_key(|key|key.points);
+            //}
+            
+            //if rudolph_collection.len() > 10000{
+            //    rudolph_collection.truncate(9900);    
+            //}
+            rudolph_collection.make_contiguous().sort_by_key(|key|key.points);
+            let mut current = rudolph_collection.pop_front().unwrap();
+            //println!("Rudolph is at: {:?} living rudolphs: {}", current.position, rudolph_collection.len());
+            //if current.path.contains(&current.position){
+            //    continue;
+            //}
+            if visited.contains(&current.position){
+                continue;
+            }
+            visited.insert(current.position);
+            current.path.insert(current.position);
+            if current.position == self.maze.end{
+                self.rudolph = current;
+                break;
+            }
+            let connected_nodes = match self.maze.field_graph.get(&current.position){
+                Some(nodes) => nodes,
+                None => continue,
+            };
+            println!("current position: {:?} connected nodes: {:?}", &current.position, &connected_nodes);
+            for node in connected_nodes{
+                let mut move_points = current.points + node.distance;
+                let move_direction = self.turn_detector(&current, node.coords);
+
+                if move_direction != current.direction{
+                    move_points += 1000;
+                }
+                rudolph_collection.push_back(Rudolph{
+                    position: node.coords,
+                    direction: move_direction,
+                    points: move_points,
+                    path: current.path.clone(),   
+                    }
+                );
+            }
+            
+        }
+        for pos in &self.rudolph.path{
+            self.maze.field[pos.y as usize][pos.x as usize] = 'O';
+        }
+        for line in &self.maze.field{
+            for c in line{
+                print!("{c}");
+            }
+            println!("");
+        }
         return self.rudolph.points;
     }
-    fn rudolph_turn(&mut self){
-
+    fn turn_detector(&self, rudolph: &Rudolph, next_pos:Coords)-> Direction{
+        let dir_indicator = rudolph.position - next_pos;
+        match rudolph.direction{
+            Direction::North =>{if dir_indicator.x == 0{
+                return Direction::North;
+                }
+                if dir_indicator.x.is_negative(){
+                    return Direction::East;
+                }
+                return Direction::West;
+            },
+            Direction::South =>{if dir_indicator.x == 0{
+                return Direction::South;
+                }
+                if dir_indicator.x.is_negative(){
+                    return Direction::East;
+                }
+                return Direction::West;
+            },
+            Direction::East =>{if dir_indicator.y == 0{
+                return Direction::East;
+                }
+                if dir_indicator.y.is_negative(){
+                    return Direction::South;
+                }
+                return Direction::North;
+            },
+            Direction::West =>{if dir_indicator.y == 0{
+                return Direction::East;
+                }
+                if dir_indicator.y.is_negative(){
+                    return Direction::South;
+                }
+                return Direction::North;
+            },
+        }
     }
     fn rudolph_move_to_next_junction(&mut self){
 
     }
-    //fn find_next_junction(&self, mut pos:Coords) -> Option<Coords>{
-    //    
-    //    match self.rudolph.direction{
-    //        North=>,
-    //        South=>,
-    //        East=>,
-    //        West=>,
-    //    }
-    //}
 }
 fn main() {
     let path = "./data/test_1";
@@ -211,6 +355,7 @@ fn main() {
 fn babbage(input: InputData){
     let now = Instant::now();
     let mut solver = input.parse();
+    
     //println!("Add tuple experiment: {:?}", tup_add);
     println!("The answer is: {}", solver.solve());
     println!("babbage runtime: {}", now.elapsed().as_micros());
