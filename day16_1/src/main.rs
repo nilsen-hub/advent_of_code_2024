@@ -271,7 +271,7 @@ impl Solver{
                     if move_direction != self.rudolph.direction{
                         move_points += 1000;
                     }
-                    let priority = move_points + self.rudolph.position.x.abs_diff(node.coords.x) + self.rudolph.position.x.abs_diff(node.coords.x);
+                    let priority = move_points + self.rudolph.position.x.abs_diff(node.coords.x) * 100 + self.rudolph.position.x.abs_diff(node.coords.x) * 100;
                     let rudolph = Rudolph{
                         position: node.coords,
                         direction: move_direction.clone(),
