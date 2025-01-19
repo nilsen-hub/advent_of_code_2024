@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     fs::read_to_string,
     time::Instant,
     usize,
@@ -184,7 +184,6 @@ impl Maze {
                 }
             }
         }
-        nodes.sort_by_key(|node| node.dist_fr_neigh);
         return nodes;
     }
 }
@@ -224,15 +223,12 @@ impl Solver {
                 let connected_nodes = self.maze.field_graph.get(&node.coords).unwrap().clone();
 
                 for mut destination in connected_nodes {
-                    let mut move_distance = destination.dist_fr_neigh;
-                    let move_direction = self.turn_detector(&node, destination.coords);
+                    destination.dist_fr_start = node.dist_fr_start + destination.dist_fr_neigh;
+                    destination.direction = self.turn_detector(&node, destination.coords);
 
-                    if move_direction != node.direction {
-                        move_distance += 1000;
+                    if destination.direction != node.direction {
+                        destination.dist_fr_start += 1000;
                     }
-
-                    destination.dist_fr_start = node.dist_fr_start + move_distance;
-                    destination.direction = move_direction;
 
                     if destination.coords == self.maze.end {
                         return destination.dist_fr_start;
@@ -240,11 +236,7 @@ impl Solver {
 
                     frontier
                         .entry(destination.dist_fr_start)
-                        .and_modify(|vec| {
-                            if !vec.contains(&destination) {
-                                vec.push(destination)
-                            }
-                        })
+                        .and_modify(|vec| vec.push(destination))
                         .or_insert(Vec::from([destination]));
                 }
                 visited.insert(node.coords, node);
