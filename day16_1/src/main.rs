@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fs::read_to_string,
     time::Instant,
     usize,
@@ -77,6 +77,7 @@ struct Node {
     dist_fr_neigh: usize, // Distance from neighbor
     dist_fr_start: usize, // Distance from start tile
     direction: Direction,
+    path: HashSet<Coords>,
 }
 #[derive(Debug, Clone)]
 struct InputData {
@@ -146,12 +147,13 @@ impl Maze {
     fn get_connected_nodes(&self, start_pos: Coords) -> Vec<Node> {
         let directions = [Coords::NORTH, Coords::SOUTH, Coords::EAST, Coords::WEST];
         let mut nodes: Vec<Node> = Vec::with_capacity(5);
-
+        let mut visited: HashSet<Coords> = HashSet::new();
         for direction in directions {
             let mut current_pos = start_pos;
             let mut steps = 0;
 
             'outer: loop {
+                visited.insert(current_pos);
                 current_pos = current_pos + direction;
                 if self.field[current_pos.y as usize][current_pos.x as usize] == '#' {
                     break;
@@ -165,18 +167,23 @@ impl Maze {
                         dist_fr_neigh: steps,
                         dist_fr_start: usize::MAX,
                         direction: Direction::East,
+                        path: HashSet::new(),
                     };
                     nodes.push(node);
                     continue;
                 }
                 for next in directions {
                     let check = current_pos + next;
+                    if visited.contains(&check) || next == direction {
+                        continue;
+                    }
                     if self.field[check.y as usize][check.x as usize] == '.' {
                         let node = Node {
                             coords: current_pos,
                             dist_fr_neigh: steps,
                             dist_fr_start: usize::MAX,
                             direction: Direction::East,
+                            path: HashSet::new(),
                         };
                         nodes.push(node);
                         break 'outer;
@@ -185,6 +192,22 @@ impl Maze {
             }
         }
         return nodes;
+    }
+    fn point_printer(&self) {
+        let mut field = self.field.clone();
+        for (coord, _nodes) in self.field_graph.clone() {
+            field[coord.y as usize][coord.x as usize] = '*';
+        }
+        for line in field {
+            for tile in line {
+                if tile == '.' {
+                    print!(" ");
+                    continue;
+                }
+                print!("{tile}");
+            }
+            println!(" ");
+        }
     }
 }
 
@@ -195,6 +218,7 @@ struct Solver {
 impl Solver {
     fn solve(&mut self) -> usize {
         self.maze.make_graph();
+        self.maze.point_printer();
         let mut frontier: BTreeMap<usize, Vec<Node>> = BTreeMap::new();
         let mut visited: HashMap<Coords, Node> = HashMap::new();
 
