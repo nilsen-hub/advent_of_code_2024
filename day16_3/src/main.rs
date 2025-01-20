@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs::read_to_string,
+    hash::Hash,
     time::Instant,
     usize,
 };
@@ -161,7 +162,9 @@ impl Maze {
 
                 steps += 1;
 
-                if self.field[current_pos.y as usize][current_pos.x as usize] == 'E' {
+                if self.field[current_pos.y as usize][current_pos.x as usize] == 'E'
+                    || self.field[current_pos.y as usize][current_pos.x as usize] == 'S'
+                {
                     let node = Node {
                         coords: current_pos,
                         dist_fr_neigh: steps,
@@ -174,9 +177,9 @@ impl Maze {
                 }
                 for next in directions {
                     let check = current_pos + next;
-                    if visited.contains(&check) || next == direction {
-                        continue;
-                    }
+                    //if visited.contains(&check) || next == direction {
+                    //    continue;
+                    //}
                     if self.field[check.y as usize][check.x as usize] == '.' {
                         let node = Node {
                             coords: current_pos,
@@ -193,29 +196,19 @@ impl Maze {
         }
         return nodes;
     }
-    fn graph_printer(&self) {
+    fn point_printer(&self, points: &HashSet<Coords>) {
         let mut field = self.field.clone();
-        for (coord, _nodes) in self.field_graph.clone() {
-            field[coord.y as usize][coord.x as usize] = '*';
-        }
-        for line in field {
-            for tile in line {
-                if tile == '.' {
-                    print!(" ");
-                    continue;
-                }
-                print!("{tile}");
-            }
-            println!(" ");
-        }
-    }
-    fn point_printer(&self, points: HashSet<Coords>) {
-        let mut field = self.field.clone();
+
         for point in points {
             field[point.y as usize][point.x as usize] = '*';
         }
+
         for line in field {
             for tile in line {
+                if tile == '*' {
+                    print!("\x1b[0;32m*\x1b[0m");
+                    continue;
+                }
                 if tile == '.' {
                     print!(" ");
                     continue;
@@ -224,11 +217,6 @@ impl Maze {
             }
             println!(" ");
         }
-    }
-    fn path_reconstructor(&self, path: HashSet<Coords>) -> HashSet<Coords> {
-        let output: HashSet<Coords> = HashSet::new();
-
-        output
     }
 }
 
@@ -239,12 +227,12 @@ struct Solver {
 impl Solver {
     fn solve(&mut self) -> usize {
         self.maze.make_graph();
-        self.maze.graph_printer();
-        let mut frontier: BTreeMap<usize, Vec<Node>> = BTreeMap::new();
-        let mut visited: HashMap<Coords, Node> = HashMap::new();
+
+        let mut frontier: HashMap<Coords, Vec<Node>> = HashMap::new();
+        let mut finishers: BTreeMap<usize, Vec<Node>> = BTreeMap::new();
 
         frontier.insert(
-            0,
+            self.maze.start,
             Vec::from([Node {
                 coords: self.maze.start,
                 dist_fr_neigh: 0,
@@ -255,19 +243,39 @@ impl Solver {
         );
 
         loop {
-            let current_nodes = match frontier.pop_first() {
-                Some(vec) => vec.1,
-                None => panic!("This should not happen"),
-            };
-            for mut node in current_nodes {
-                if let Some(nod) = visited.get(&node.coords) {
-                    if node.dist_fr_start >= nod.dist_fr_start {
-                        continue;
+            let mut current_nodes: Vec<Node> = Vec::new();
+            if frontier.len() == 0 {
+                break;
+            }
+            for node_vector in frontier.clone() {
+                let mut to_insert = node_vector.1;
+                to_insert.sort_by_key(|node| node.dist_fr_start);
+                let comp = to_insert[0].dist_fr_start;
+                for node in to_insert {
+                    if comp.abs_diff(node.dist_fr_start) <= 1000 {
+                        current_nodes.push(node);
+                    } else {
+                        break;
                     }
                 }
+            }
+            //println!("current nodes length: {}", current_nodes.len());
+            frontier.clear();
+
+            for mut node in current_nodes {
+                if node.dist_fr_start > 75000 {
+                    continue;
+                }
+
+                node.path.insert(node.coords);
                 let connected_nodes = self.maze.field_graph.get(&node.coords).unwrap().clone();
 
                 for mut destination in connected_nodes {
+                    if node.path.contains(&destination.coords) {
+                        continue;
+                    }
+
+                    destination.path = node.path.clone();
                     destination.dist_fr_start = node.dist_fr_start + destination.dist_fr_neigh;
                     destination.direction = self.turn_detector(&node, destination.coords);
 
@@ -276,47 +284,60 @@ impl Solver {
                     }
 
                     if destination.coords == self.maze.end {
-                        return destination.dist_fr_start;
+                        destination.path.insert(destination.coords);
+                        finishers
+                            .entry(destination.dist_fr_start)
+                            .and_modify(|vec| vec.push(destination.clone()))
+                            .or_insert(Vec::from([destination]));
+                        break;
                     }
 
                     frontier
-                        .entry(destination.dist_fr_start)
+                        .entry(destination.coords)
                         .and_modify(|vec| vec.push(destination.clone()))
                         .or_insert(Vec::from([destination]));
                 }
-                visited.insert(node.coords, node);
             }
         }
+        let to_check = finishers.pop_first().unwrap().1;
+        let mut printable: HashSet<Coords> = HashSet::new();
+
+        for node in to_check {
+            printable.extend(node.path);
+        }
+        //self.maze.point_printer(&printable);
+
+        return printable.len();
     }
     fn turn_detector(&self, node: &Node, next_pos: Coords) -> Direction {
         let dir_indicator = node.coords - next_pos;
-        use Direction as D;
+        use Direction as Dir;
         match node.direction {
-            D::North | D::South => {
+            Dir::North | Dir::South => {
                 if dir_indicator.x == 0 {
                     return node.direction;
                 }
                 if dir_indicator.x.is_negative() {
-                    return D::East;
+                    return Dir::East;
                 } else {
-                    return D::West;
+                    return Dir::West;
                 }
             }
-            D::East | D::West => {
+            Dir::East | Dir::West => {
                 if dir_indicator.y == 0 {
                     return node.direction;
                 }
                 if dir_indicator.y.is_negative() {
-                    return D::South;
+                    return Dir::South;
                 } else {
-                    return D::North;
+                    return Dir::North;
                 }
             }
         }
     }
 }
 fn main() {
-    let path = "./data/test_1";
+    let path = "./data/data";
     let input = InputData {
         input: match read_to_string(path) {
             Ok(file) => file,
@@ -331,7 +352,7 @@ fn babbage(input: InputData) {
 
     //println!("Add tuple experiment: {:?}", tup_add);
     println!("The answer is: {}", solver.solve());
-    println!("babbage runtime: {}", now.elapsed().as_micros());
+    println!("babbage runtime: {}", now.elapsed().as_secs_f32());
 }
 
 #[cfg(test)]
