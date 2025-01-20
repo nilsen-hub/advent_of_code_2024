@@ -177,9 +177,6 @@ impl Maze {
                 }
                 for next in directions {
                     let check = current_pos + next;
-                    //if visited.contains(&check) || next == direction {
-                    //    continue;
-                    //}
                     if self.field[check.y as usize][check.x as usize] == '.' {
                         let node = Node {
                             coords: current_pos,
@@ -299,6 +296,7 @@ impl Solver {
                 }
             }
         }
+
         let to_check = finishers.pop_first().unwrap().1;
         let mut printable: HashSet<Coords> = HashSet::new();
 
