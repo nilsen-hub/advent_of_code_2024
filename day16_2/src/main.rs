@@ -1,9 +1,8 @@
 use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, HashMap, HashSet},
     fs::read_to_string,
-    path, thread,
-    time::{Duration, Instant},
+    hash::Hash,
+    time::Instant,
     usize,
 };
 
@@ -16,7 +15,7 @@ enum Direction {
     East,
     West,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 struct Coords {
     x: isize,
     y: isize,
@@ -73,14 +72,13 @@ impl Coords {
         return Coords { x: t0, y: t1 };
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 struct Node {
     coords: Coords,
     dist_fr_neigh: usize, // Distance from neighbor
     dist_fr_start: usize, // Distance from start tile
     direction: Direction,
-    path: Vec<Vec<Coords>>,
-    visited: HashSet<Coords>,
+    path: HashSet<Coords>,
 }
 #[derive(Debug, Clone)]
 struct InputData {
@@ -90,9 +88,11 @@ impl InputData {
     fn parse(&self) -> Solver {
         let lines = self.input.lines();
         let mut field: Field = Vec::with_capacity(150);
+
         for line in lines {
             field.push(line.chars().collect());
         }
+
         let mut end = Coords::from(0, 0);
 
         for (idx, c) in field[1].iter().enumerate() {
@@ -100,7 +100,9 @@ impl InputData {
                 end = Coords::from(idx as isize, 1);
             }
         }
+
         let start = Coords::from(end.y, end.x);
+
         return Solver {
             maze: Maze {
                 field,
@@ -108,14 +110,6 @@ impl InputData {
                 start,
                 end,
             },
-            rudolph: Rudolph {
-                position: start,
-                direction: Direction::East,
-                points: 0,
-                priority: 0,
-                path: HashSet::new(),
-            },
-            to_check: BTreeMap::new(),
         };
     }
 }
@@ -131,25 +125,10 @@ struct Maze {
 impl Maze {
     fn make_graph(&mut self) {
         let position = self.start;
-
         let to_explore = self.get_connected_nodes(position);
         self.field_graph.insert(position, to_explore.clone());
 
         self.node_crawler(to_explore);
-        //println!("graph contains {} nodes", self.field_graph.len());
-        //self.graph_printer();
-    }
-    fn graph_printer(&self) {
-        let mut field_copy = self.field.clone();
-        for (key, _nodes) in &self.field_graph {
-            field_copy[key.y as usize][key.x as usize] = '+';
-        }
-        for line in &field_copy {
-            for c in line {
-                print!("{c}");
-            }
-            println!("");
-        }
     }
     fn node_crawler(&mut self, mut to_explore: Vec<Node>) {
         loop {
@@ -166,46 +145,44 @@ impl Maze {
         }
     }
     fn get_connected_nodes(&self, start_pos: Coords) -> Vec<Node> {
-        let mut visited: HashSet<Coords> = HashSet::new();
-        visited.insert(start_pos);
         let directions = [Coords::NORTH, Coords::SOUTH, Coords::EAST, Coords::WEST];
-
         let mut nodes: Vec<Node> = Vec::with_capacity(5);
+        let mut visited: HashSet<Coords> = HashSet::new();
         for direction in directions {
             let mut current_pos = start_pos;
             let mut steps = 0;
+
             'outer: loop {
+                visited.insert(current_pos);
                 current_pos = current_pos + direction;
                 if self.field[current_pos.y as usize][current_pos.x as usize] == '#' {
                     break;
                 }
-                visited.insert(current_pos);
+
                 steps += 1;
-                if self.field[current_pos.y as usize][current_pos.x as usize] == 'E' {
+
+                if self.field[current_pos.y as usize][current_pos.x as usize] == 'E'
+                    || self.field[current_pos.y as usize][current_pos.x as usize] == 'S'
+                {
                     let node = Node {
                         coords: current_pos,
                         dist_fr_neigh: steps,
                         dist_fr_start: usize::MAX,
                         direction: Direction::East,
-                        path: Vec::new(),
-                        visited: HashSet::new(),
+                        path: HashSet::new(),
                     };
                     nodes.push(node);
                     continue;
                 }
                 for next in directions {
                     let check = current_pos + next;
-                    if visited.contains(&check) || next == direction {
-                        continue;
-                    }
                     if self.field[check.y as usize][check.x as usize] == '.' {
                         let node = Node {
                             coords: current_pos,
                             dist_fr_neigh: steps,
                             dist_fr_start: usize::MAX,
                             direction: Direction::East,
-                            path: Vec::new(),
-                            visited: HashSet::new(),
+                            path: HashSet::new(),
                         };
                         nodes.push(node);
                         break 'outer;
@@ -213,245 +190,144 @@ impl Maze {
                 }
             }
         }
-        //nodes.sort_by_key(|node| node.dist_fr_neigh);
-        //println!("nodes: {:?}", nodes);
         return nodes;
     }
-}
-#[derive(Debug, Clone)]
-struct Rudolph {
-    position: Coords,
-    direction: Direction,
-    points: usize,
-    priority: usize,
-    path: HashSet<Coords>,
-}
-#[derive(Debug, Clone)]
-struct Solver {
-    maze: Maze,
-    rudolph: Rudolph,
-    to_check: BTreeMap<usize, VecDeque<Rudolph>>,
-}
-impl Solver {
-    fn solve(&mut self) -> usize {
-        self.maze.make_graph();
-        let mut frontier: HashMap<Coords, Node> = HashMap::new();
-        frontier.insert(
-            self.maze.start,
-            Node {
-                coords: self.maze.start,
-                dist_fr_neigh: 0,
-                dist_fr_start: 0,
-                direction: Direction::East,
-                path: Vec::new(),
-                visited: HashSet::new(),
-            },
-        );
-        //bootstrap vector
+    fn point_printer(&self, points: &HashSet<Coords>) {
+        let mut field = self.field.clone();
 
-        let mut collector: HashMap<Coords, Node> = HashMap::new();
-        let mut candidates: BTreeMap<usize, Vec<Node>> = BTreeMap::new();
-        loop {
-            if frontier.len() == 0 {
-                let truth: (usize, Vec<Node>) = match candidates.pop_first() {
-                    Some(vector) => vector,
-                    None => (Default::default(), Default::default()),
-                };
-                println!("steps: {} length: {}", truth.0, truth.1.len());
-                let mut to_print: HashSet<Coords> = HashSet::new();
-                for node in truth.1 {
-                    for vec in node.path {
-                        to_print.extend(self.path_reconstructor(vec));
-                    }
-                }
-
-                self.maze_printer(to_print.clone());
-                println!("AMOUNT OF STUFF: {}", to_print.len());
-                break;
-            }
-            for (_coords, mut node) in frontier {
-                if node.dist_fr_start > 75000000 {
-                    continue;
-                }
-                if node.path.len() == 0 {
-                    node.path.push(Vec::from([node.coords]));
-                } else {
-                    node.path[0].push(node.coords);
-                }
-
-                node.visited.insert(node.coords.clone());
-                let connected_nodes = self.maze.field_graph.get(&node.coords).unwrap().clone();
-                for mut target in connected_nodes {
-                    target.visited = node.visited.clone();
-                    if target.visited.contains(&target.coords) {
-                        continue;
-                    }
-
-                    target.direction = self.turn_detector(&node, target.coords);
-                    target.dist_fr_start = target.dist_fr_neigh + node.dist_fr_start;
-
-                    if target.direction != node.direction {
-                        target.dist_fr_start += 1000;
-                    }
-
-                    target.path = node.path.clone();
-
-                    if target.coords == self.maze.end {
-                        println!("candidate discovered!");
-                        target.path[0].push(target.coords);
-                        candidates
-                            .entry(target.dist_fr_start)
-                            .and_modify(|vec| {
-                                if !vec.contains(&target) {
-                                    vec.push(target.clone())
-                                }
-                            })
-                            .or_insert(Vec::from([target.clone()]));
-                    }
-                    if collector.contains_key(&target.coords) {
-                        let mut prev = collector.remove(&target.coords).unwrap();
-                        prev.path[0].push(prev.coords);
-                        target.visited.extend(prev.visited);
-                        for el in prev.path {
-                            target.path.push(el);
-                        }
-                        //match prev.dist_fr_start.cmp(&target.dist_fr_start) {
-                        //    Ordering::Less => {
-                        //        collector.insert(prev.coords, prev);
-                        //        continue;
-                        //    }
-                        //    Ordering::Equal => {
-                        //        prev.path[0].push(prev.coords);
-                        //        target.visited.extend(prev.visited);
-                        //        for el in prev.path {
-                        //            target.path.push(el);
-                        //        }
-                        //    }
-                        //    Ordering::Greater => (),
-                        //};
-                    }
-
-                    collector.insert(target.coords, target);
-                }
-            }
-            frontier = collector.clone();
-            //println!("frontier.len {}", frontier.len());
-            //if counter > 100000 {
-            //    self.maze_printer(frontier.clone());
-            //    counter = 0;
-            //}
-
-            //thread::sleep(dur);
-            collector.clear();
+        for point in points {
+            field[point.y as usize][point.x as usize] = '*';
         }
-        0
-    }
-    fn path_reconstructor(&self, node: Vec<Coords>) -> HashSet<Coords> {
-        let mut source = node.clone();
-        let mut reconstructed: HashSet<Coords> = HashSet::with_capacity(1000);
-        let mut current = source.pop().unwrap();
-        loop {
-            reconstructed.insert(current);
-            let next = match source.pop() {
-                Some(node) => node,
-                None => break,
-            };
 
-            let comp = current - next;
-            if comp.x == 0 {
-                if comp.y.is_negative() {
-                    while current.y - next.y != 0 {
-                        current.y += 1;
-                        reconstructed.insert(current);
-                    }
-                    continue;
-                } else {
-                    while current.y - next.y != 0 {
-                        current.y -= 1;
-                        reconstructed.insert(current);
-                    }
-                    continue;
-                }
-            } else {
-                if comp.x.is_negative() {
-                    while current.x - next.x != 0 {
-                        current.x += 1;
-                        reconstructed.insert(current);
-                    }
-                    continue;
-                } else {
-                    while current.x - next.x != 0 {
-                        current.x -= 1;
-                        reconstructed.insert(current);
-                    }
-                    continue;
-                }
-            }
-        }
-        reconstructed
-    }
-    fn maze_mutator(&mut self, path: &HashSet<Coords>) {
-        for tile in path {
-            self.maze.field[tile.y as usize][tile.x as usize] = '*';
-        }
-    }
-    fn maze_printer(&self, frontier: HashSet<Coords>) {
-        let mut field = self.maze.field.clone();
-        for tile in frontier {
-            field[tile.y as usize][tile.x as usize] = '*';
-        }
-        for line in &field {
+        for line in field {
             for tile in line {
-                if *tile == '*' {
+                if tile == '*' {
                     print!("\x1b[0;32m*\x1b[0m");
                     continue;
                 }
-                if *tile == '.' {
+                if tile == '.' {
                     print!(" ");
                     continue;
                 }
                 print!("{tile}");
             }
-            println!("");
+            println!(" ");
         }
-        println!("");
     }
-    //fn path_print(&self, node: &Node) {
-    //    println!("");
-    //    let mut maze = self.maze.field.clone();
-    //    for pos in &node.path {
-    //        maze[pos.y as usize][pos.x as usize] = 'O';
-    //    }
-    //    for line in maze {
-    //        for c in line {
-    //            print!("{c}");
-    //        }
-    //        println!("");
-    //    }
-    //    println!("");
-    //}
+}
+
+#[derive(Debug, Clone)]
+struct Solver {
+    maze: Maze,
+}
+impl Solver {
+    fn solve(&mut self) -> usize {
+        self.maze.make_graph();
+
+        let mut frontier: HashMap<Coords, Vec<Node>> = HashMap::new();
+        let mut finishers: BTreeMap<usize, Vec<Node>> = BTreeMap::new();
+
+        frontier.insert(
+            self.maze.start,
+            Vec::from([Node {
+                coords: self.maze.start,
+                dist_fr_neigh: 0,
+                dist_fr_start: 0,
+                direction: Direction::East,
+                path: HashSet::new(),
+            }]),
+        );
+
+        loop {
+            let mut current_nodes: Vec<Node> = Vec::new();
+            if frontier.len() == 0 {
+                break;
+            }
+            for node_vector in frontier.clone() {
+                let mut to_insert = node_vector.1;
+                to_insert.sort_by_key(|node| node.dist_fr_start);
+                let comp = to_insert[0].dist_fr_start;
+                for node in to_insert {
+                    if comp.abs_diff(node.dist_fr_start) <= 1000 {
+                        current_nodes.push(node);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            //println!("current nodes length: {}", current_nodes.len());
+            frontier.clear();
+
+            for mut node in current_nodes {
+                if node.dist_fr_start > 75000 {
+                    continue;
+                }
+
+                node.path.insert(node.coords);
+                let connected_nodes = self.maze.field_graph.get(&node.coords).unwrap().clone();
+
+                for mut destination in connected_nodes {
+                    if node.path.contains(&destination.coords) {
+                        continue;
+                    }
+
+                    destination.path = node.path.clone();
+                    destination.dist_fr_start = node.dist_fr_start + destination.dist_fr_neigh;
+                    destination.direction = self.turn_detector(&node, destination.coords);
+
+                    if destination.direction != node.direction {
+                        destination.dist_fr_start += 1000;
+                    }
+
+                    if destination.coords == self.maze.end {
+                        destination.path.insert(destination.coords);
+                        finishers
+                            .entry(destination.dist_fr_start)
+                            .and_modify(|vec| vec.push(destination.clone()))
+                            .or_insert(Vec::from([destination]));
+                        break;
+                    }
+
+                    frontier
+                        .entry(destination.coords)
+                        .and_modify(|vec| vec.push(destination.clone()))
+                        .or_insert(Vec::from([destination]));
+                }
+            }
+        }
+
+        let to_check = finishers.pop_first().unwrap().1;
+        let mut printable: HashSet<Coords> = HashSet::new();
+
+        for node in to_check {
+            printable.extend(node.path);
+        }
+        self.maze.point_printer(&printable);
+
+        return printable.len();
+    }
     fn turn_detector(&self, node: &Node, next_pos: Coords) -> Direction {
         let dir_indicator = node.coords - next_pos;
-        use Direction as D;
+        use Direction as Dir;
         match node.direction {
-            D::North | D::South => {
+            Dir::North | Dir::South => {
                 if dir_indicator.x == 0 {
                     return node.direction;
                 }
                 if dir_indicator.x.is_negative() {
-                    return D::East;
+                    return Dir::East;
                 } else {
-                    return D::West;
+                    return Dir::West;
                 }
             }
-            D::East | D::West => {
+            Dir::East | Dir::West => {
                 if dir_indicator.y == 0 {
                     return node.direction;
                 }
                 if dir_indicator.y.is_negative() {
-                    return D::South;
+                    return Dir::South;
                 } else {
-                    return D::North;
+                    return Dir::North;
                 }
             }
         }
@@ -473,7 +349,7 @@ fn babbage(input: InputData) {
 
     //println!("Add tuple experiment: {:?}", tup_add);
     println!("The answer is: {}", solver.solve());
-    println!("babbage runtime: {}", now.elapsed().as_micros());
+    println!("babbage runtime: {}", now.elapsed().as_secs_f32());
 }
 
 #[cfg(test)]
