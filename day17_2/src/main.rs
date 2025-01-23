@@ -47,60 +47,40 @@ struct Computer {
 
 impl Computer {
     fn find_equal_setting(&mut self) -> usize {
-        // step 1: find correct length of output by raising 2 to the power
-        // of multiples of 3 until desired length is reached, we call this value
-        // product of nth place exponent or PNPE
-        // step 2: find the correct last digit by adding PNPE until final number
-        // matches the target
-        // step 3: decrement the exponent by 3 and add this new PNPE to the sum
-        // until second to final digit matches
-        // step 4: repeat until all digits match
-        let mut current_index: usize = 0;
-        let mut a_reg: usize = 0;
+        let mut current_index: usize = self.program.len() - 1;
+        let mut a_reg = 2_usize.pow((current_index * 3) as u32);
+
         loop {
-            loop {
-                self.register_a = a_reg;
-                self.cpu();
-                if self.program[current_index] == self.output[current_index] {
-                    // check if previous digit still matches, if not, run backtrack
+            self.reset(a_reg);
+            self.cpu();
 
-                    println!("program: {:?}", self.program);
-                    println!("output:  {:?}", self.output);
-                    println!("");
-                    current_index += 1;
-                    if current_index == self.program.len() {
-                        println!("program: {:?}", self.program);
-                        println!("output:  {:?}", self.output);
-                        return a_reg;
+            if self.program[current_index] == self.output[current_index] {
+                if current_index == 0 {
+                    if !self.check_output_equality() {
+                        self.wall(a_reg);
                     }
-                    self.output.clear();
-                    continue;
+                    a_reg = self.wall(a_reg);
+                    return a_reg;
                 }
-                a_reg += 2_usize.pow((current_index * 3) as u32);
+                current_index -= 1;
 
-                //a_reg = 0;
                 self.output.clear();
-                multiplier += 1;
+                continue;
             }
+            a_reg += 2_usize.pow((current_index * 3) as u32);
         }
     }
     fn cpu(&mut self) {
         let mut window: (usize, usize) = (0, 1);
 
-        'main_loop: loop {
-            if window.0 >= self.program.len() {
-                //print!("output: ");
-                for (index, value) in self.output.iter().enumerate() {
-                    if index == self.output.len() - 1 {
-                        //print!("{}", value);
-                        //println!("");
-                        break 'main_loop;
-                    }
-                    //print!("{},", value);
-                }
+        loop {
+            if window.0 == self.program.len() {
+                break;
             }
+
             let opcode = self.program[window.0];
             let operand = self.program[window.1];
+
             match opcode {
                 0 => self.op0_adv(&operand),
                 1 => self.op1_bxl(&operand),
@@ -118,6 +98,7 @@ impl Computer {
                 7 => self.op7_cdv(&operand),
                 _ => panic!("Cpu shit the bed"),
             }
+
             window.0 += 2;
             window.1 = window.0 + 1;
         }
@@ -169,7 +150,43 @@ impl Computer {
             _ => panic!("should never happen"),
         };
     }
+    fn wall(&mut self, a_reg: usize) -> usize {
+        let mut a_reg = a_reg;
+        let mut index = 0;
 
+        'outer: loop {
+            self.reset(a_reg);
+            self.cpu();
+
+            if self.program[index] != self.output[index] {
+                index -= 1;
+                loop {
+                    a_reg += 2_usize.pow((index * 3) as u32);
+                    self.reset(a_reg);
+                    self.cpu();
+                    if self.program[index] == self.output[index]
+                        && self.program[index + 1] == self.output[index + 1]
+                    {
+                        index = 0;
+                        continue 'outer;
+                    }
+                }
+            }
+            index += 1;
+
+            if index == self.program.len() {
+                break;
+            }
+        }
+
+        return a_reg;
+    }
+    fn reset(&mut self, a_reg: usize) {
+        self.register_a = a_reg;
+        self.register_b = 0;
+        self.register_c = 0;
+        self.output.clear();
+    }
     fn check_output_equality(&self) -> bool {
         if self.output.len() != self.program.len() {
             return false;
@@ -190,13 +207,14 @@ fn main() {
             Err(_) => panic!("File should be here"),
         },
     };
-    babbage(input);
+    println!("The answer is: {}", babbage(input));
 }
-fn babbage(input: InputData) {
+fn babbage(input: InputData) -> usize {
     let now = Instant::now();
     let mut computer = input.parse();
-    println!("The answer is: {}", computer.find_equal_setting());
+    let answer = computer.find_equal_setting();
     println!("babbage runtime: {}", now.elapsed().as_micros());
+    return answer;
 }
 
 #[cfg(test)]
