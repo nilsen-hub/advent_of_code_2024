@@ -133,7 +133,7 @@ impl Computer {
     }
 }
 fn main() {
-    let path = "./data/test_1";
+    let path = "./data/data";
     let input = InputData {
         input: match read_to_string(path) {
             Ok(file) => file,

@@ -46,37 +46,58 @@ struct Computer {
 }
 
 impl Computer {
+    fn find_equal_setting(&mut self) -> usize {
+        // step 1: find correct length of output by raising 2 to the power
+        // of multiples of 3 until desired length is reached, we call this value
+        // product of nth place exponent or PNPE
+        // step 2: find the correct last digit by adding PNPE until final number
+        // matches the target
+        // step 3: decrement the exponent by 3 and add this new PNPE to the sum
+        // until second to final digit matches
+        // step 4: repeat until all digits match
+        let mut current_index: usize = 0;
+        let mut a_reg: usize = 0;
+        loop {
+            loop {
+                self.register_a = a_reg;
+                self.cpu();
+                if self.program[current_index] == self.output[current_index] {
+                    // check if previous digit still matches, if not, run backtrack
+
+                    println!("program: {:?}", self.program);
+                    println!("output:  {:?}", self.output);
+                    println!("");
+                    current_index += 1;
+                    if current_index == self.program.len() {
+                        println!("program: {:?}", self.program);
+                        println!("output:  {:?}", self.output);
+                        return a_reg;
+                    }
+                    self.output.clear();
+                    continue;
+                }
+                a_reg += 2_usize.pow((current_index * 3) as u32);
+
+                //a_reg = 0;
+                self.output.clear();
+                multiplier += 1;
+            }
+        }
+    }
     fn cpu(&mut self) {
         let mut window: (usize, usize) = (0, 1);
-        let mut reg_a = 0;
-        self.register_a = reg_a;
 
         'main_loop: loop {
             if window.0 >= self.program.len() {
-                println!("self reg a: {}", reg_a);
-                println!("program: {:?}", self.program);
-                println!("output:  {:?}", self.output);
-
-                println!("");
                 //print!("output: ");
-                //for (index, value) in self.output.iter().enumerate() {
-                //    if index == self.output.len() - 1 {
-                //        print!("{}", value);
-                //        println!("");
-                //        break;
-                //    }
-                //    print!("{},", value);
-                //}
-                if self.check_output_equality() {
-                    println!("register a: {}", reg_a);
-                    break 'main_loop;
+                for (index, value) in self.output.iter().enumerate() {
+                    if index == self.output.len() - 1 {
+                        //print!("{}", value);
+                        //println!("");
+                        break 'main_loop;
+                    }
+                    //print!("{},", value);
                 }
-                window = (0, 1);
-                reg_a += 1;
-                self.register_a = reg_a;
-                self.register_b = 0;
-                self.register_c = 0;
-                self.output.clear();
             }
             let opcode = self.program[window.0];
             let operand = self.program[window.1];
@@ -162,7 +183,7 @@ impl Computer {
     }
 }
 fn main() {
-    let path = "./data/test";
+    let path = "./data/data";
     let input = InputData {
         input: match read_to_string(path) {
             Ok(file) => file,
@@ -174,7 +195,7 @@ fn main() {
 fn babbage(input: InputData) {
     let now = Instant::now();
     let mut computer = input.parse();
-    computer.cpu();
+    println!("The answer is: {}", computer.find_equal_setting());
     println!("babbage runtime: {}", now.elapsed().as_micros());
 }
 
