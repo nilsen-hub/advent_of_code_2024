@@ -131,6 +131,18 @@ impl Computer {
             _ => panic!("should never happen"),
         };
     }
+
+    fn check_output_equality(&self) -> bool {
+        if self.output.len() != self.program.len() {
+            return false;
+        }
+        for (index, el) in self.program.iter().enumerate() {
+            if *el != self.output[index] {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 fn main() {
     let path = "./data/data";

@@ -57,9 +57,9 @@ impl Computer {
             if self.program[current_index] == self.output[current_index] {
                 if current_index == 0 {
                     if !self.check_output_equality() {
-                        self.wall(a_reg);
+                        a_reg = self.wall(a_reg);
                     }
-                    a_reg = self.wall(a_reg);
+
                     return a_reg;
                 }
                 current_index -= 1;
