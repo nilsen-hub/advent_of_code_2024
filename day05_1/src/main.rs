@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fs::read_to_string, time::Instant};
 
 fn main() {
-    let now = Instant::now();
     let path = "./data/data";
     let full_data = get_list_from_file(path);
+    let now = Instant::now();
     let answer = babbage(full_data);
     println!("The answer is: {}", answer);
     println!("program runtime: {}", now.elapsed().as_micros());
