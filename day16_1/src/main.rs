@@ -77,7 +77,7 @@ struct Node {
     dist_fr_neigh: usize, // Distance from neighbor
     dist_fr_start: usize, // Distance from start tile
     direction: Direction,
-    path: HashSet<Coords>,
+    //path: HashSet<Coords>,
 }
 #[derive(Debug, Clone)]
 struct InputData {
@@ -167,7 +167,7 @@ impl Maze {
                         dist_fr_neigh: steps,
                         dist_fr_start: usize::MAX,
                         direction: Direction::East,
-                        path: HashSet::new(),
+                        //path: HashSet::new(),
                     };
                     nodes.push(node);
                     continue;
@@ -183,7 +183,7 @@ impl Maze {
                             dist_fr_neigh: steps,
                             dist_fr_start: usize::MAX,
                             direction: Direction::East,
-                            path: HashSet::new(),
+                            //path: HashSet::new(),
                         };
                         nodes.push(node);
                         break 'outer;
@@ -216,9 +216,10 @@ struct Solver {
     maze: Maze,
 }
 impl Solver {
+    // Weighted Dijkstra approximation
     fn solve(&mut self) -> usize {
         self.maze.make_graph();
-        self.maze.point_printer();
+        //self.maze.point_printer();
         let mut frontier: BTreeMap<usize, Vec<Node>> = BTreeMap::new();
         let mut visited: HashMap<Coords, Node> = HashMap::new();
 

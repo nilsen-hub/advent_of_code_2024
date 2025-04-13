@@ -25,7 +25,6 @@ struct Display {
     possible_tree: bool,
     line_to_check: usize,
     room_size: RoomSize,
-
 }
 impl Display {
     fn clear(&mut self) {
@@ -34,12 +33,12 @@ impl Display {
         let scan_line: Vec<char> = vec![' '; x];
         self.screen = vec![scan_line; y];
     }
-    fn get_next_frame(&mut self) {
+    fn get_next_frame(&mut self, increment: isize) {
         let room_size = self.room_size;
         let mut index = 0;
-        let mut star_counter: Vec<(isize, isize)> = vec![(0,0);room_size.1 as usize];
+        let mut star_counter: Vec<(isize, isize)> = vec![(0, 0); room_size.1 as usize];
         loop {
-            self.robots[index].move_robot(&room_size, &1);
+            self.robots[index].move_robot(&room_size, &increment);
             let pos = self.robots[index].position.1;
             star_counter[pos as usize].0 = pos;
             star_counter[pos as usize].1 += 1;
@@ -47,7 +46,7 @@ impl Display {
             if index == self.robots.len() {
                 star_counter.sort_by_key(|tup| tup.1);
                 let last = star_counter.last().unwrap();
-                if last.1 >= 30{
+                if last.1 >= 30 {
                     self.possible_tree = true;
                     self.line_to_check = last.0 as usize;
                 }
@@ -67,7 +66,7 @@ impl Display {
             for c in line {
                 print!("{c}");
             }
-            if index == 70{
+            if index == 70 {
                 break;
             }
             println!("");
@@ -88,18 +87,20 @@ fn babbage(full_data: Vec<String>) -> isize {
     let room_size: RoomSize = (101, 103);
     let mut counter = 0;
     let mut display = build_display(full_data, room_size);
+    let mut increment = 1;
 
     loop {
         if display.possible_tree {
+            increment = display.room_size.1;
             display.frame_buffer();
-            if line_checker(&display.screen[display.line_to_check]){
+            if line_checker(&display.screen[display.line_to_check]) {
                 display.draw();
                 break;
             }
             display.possible_tree = false;
         }
-        counter += 1;
-        display.get_next_frame();
+        counter += increment;
+        display.get_next_frame(increment);
     }
     counter
 }
@@ -125,12 +126,12 @@ fn build_display(full_data: Vec<String>, room_size: RoomSize) -> Display {
     for data in full_data {
         robots.push(do_the_robot(data));
     }
-    
-    let output = Display { 
-        robots, 
-        screen, 
-        possible_tree: false, 
-        line_to_check: 0, 
+
+    let output = Display {
+        robots,
+        screen,
+        possible_tree: false,
+        line_to_check: 0,
         room_size,
     };
 

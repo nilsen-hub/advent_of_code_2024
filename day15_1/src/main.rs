@@ -33,7 +33,10 @@ impl InputData {
                 }
             }
         }
-        let robot = Robot { position, move_list };
+        let robot = Robot {
+            position,
+            move_list,
+        };
         let output = WareHouse { floor, robot };
 
         output
@@ -45,19 +48,19 @@ struct WareHouse {
     robot: Robot,
 }
 impl WareHouse {
-    fn sum_gps(&self) -> usize{
+    fn sum_gps(&self) -> usize {
         let mut sum = 0;
-        for (idy, line) in self.floor.iter().enumerate(){
-            for (idx, tile) in line.iter().enumerate(){
-                if *tile == 'O'{
-                    sum += (idy*100) + idx;
+        for (idy, line) in self.floor.iter().enumerate() {
+            for (idx, tile) in line.iter().enumerate() {
+                if *tile == 'O' {
+                    sum += (idy * 100) + idx;
                 }
             }
         }
         sum
     }
-    fn do_the_robot(&mut self){
-        for direction in self.robot.move_list.clone(){
+    fn do_the_robot(&mut self) {
+        for direction in self.robot.move_list.clone() {
             let current_tile = self.robot.position;
             match self.get_moves(&direction, &current_tile, Vec::new()) {
                 Some(mut moves) => {
@@ -66,16 +69,6 @@ impl WareHouse {
                 None => continue,
             }
         }
-    }
-    fn get_next_tile(&self, direction: &char, current_tile: &Coords) -> Coords {
-        let (x, y) = *current_tile;
-        return match *direction {
-            '^' => (x, y - 1), // North
-            'v' => (x, y + 1), // South
-            '>' => (x + 1, y), // East
-            '<' => (x - 1, y), // West
-            _ => panic!("not a valid character"),
-        };
     }
     fn get_moves(
         &self,
@@ -89,9 +82,9 @@ impl WareHouse {
             '#' => return None,
             'O' => {
                 moves.push(next);
-                match self.get_moves(direction, &next, moves){
-                    Some(moves) => return Some(moves), 
-                    None => return None, 
+                match self.get_moves(direction, &next, moves) {
+                    Some(moves) => return Some(moves),
+                    None => return None,
                 }
             }
             '.' => {
@@ -101,33 +94,44 @@ impl WareHouse {
             _ => panic!("Thats nowhere to be found in this room"),
         }
     }
+    fn get_next_tile(&self, direction: &char, current_tile: &Coords) -> Coords {
+        let (x, y) = *current_tile;
+        return match *direction {
+            '^' => (x, y - 1), // North
+            'v' => (x, y + 1), // South
+            '>' => (x + 1, y), // East
+            '<' => (x - 1, y), // West
+            _ => panic!("not a valid character"),
+        };
+    }
     fn process_moves(&mut self, moves: &mut Vec<Coords>) {
         loop {
             let to = moves.pop().unwrap();
-            match moves.last(){
+            match moves.last() {
                 Some(from) => self.make_move(to, *from),
-                None => {self.make_move(to, self.robot.position);
-                self.robot.position = to;
-                break;}
+                None => {
+                    self.make_move(to, self.robot.position);
+                    self.robot.position = to;
+                    break;
+                }
             };
-        }   
-    } 
-    fn make_move(&mut self, to:Coords, from:Coords){
-        let mut floor = self.floor.clone();
-        let to_value = floor[to.1][to.0].clone();
-        floor[to.1][to.0] = floor[from.1][from.0];
-        floor[from.1][from.0] = to_value;
-        self.floor = floor;
+        }
     }
-    fn print_floor(&self){
-        for line in &self.floor{
-            for tile in line{
+    fn make_move(&mut self, to: Coords, from: Coords) {
+        //let mut floor = self.floor.clone();
+        let to_value = self.floor[to.1][to.0].clone();
+        self.floor[to.1][to.0] = self.floor[from.1][from.0];
+        self.floor[from.1][from.0] = to_value;
+        //self.floor = floor;
+    }
+    fn print_floor(&self) {
+        for line in &self.floor {
+            for tile in line {
                 print!("{}", tile);
             }
             println!("");
         }
     }
-    
 }
 #[derive(Debug, Clone, Default)]
 struct Robot {
@@ -159,7 +163,7 @@ mod tests {
 
     #[test]
     fn moves_are_parsed() {
-        let to_match: Vec<char> = vec!['<','^','^','>',];
+        let to_match: Vec<char> = vec!['<', '^', '^', '>'];
         let path = "./data/test_parse";
         let input = InputData {
             input: match read_to_string(path) {
@@ -171,8 +175,8 @@ mod tests {
         assert_eq!(moves, to_match)
     }
     #[test]
-    fn next_tile_is_correct(){
-        let to_match = (1,2);
+    fn next_tile_is_correct() {
+        let to_match = (1, 2);
         let path = "./data/test_s";
         let mut input = InputData {
             input: match read_to_string(path) {
@@ -185,5 +189,4 @@ mod tests {
         let next_tile = input.parse().get_next_tile(&direction, &current_tile);
         assert_eq!(next_tile, to_match)
     }
-
 }

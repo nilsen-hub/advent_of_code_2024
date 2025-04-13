@@ -302,7 +302,7 @@ impl Solver {
         for node in to_check {
             printable.extend(node.path);
         }
-        self.maze.point_printer(&printable);
+        //self.maze.point_printer(&printable);
 
         return printable.len();
     }
